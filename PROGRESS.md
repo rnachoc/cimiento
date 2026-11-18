@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 10 terminadas (2026-11-18). Siguiente: fase 11.
+Estado: fases 0 a 10 terminadas; fase 11 a medias (scorecard hecha, falta la ejecución con Claude) (2026-11-18).
 
 ## Fase 0: repo base
 
@@ -167,5 +167,15 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Incidencia corregida: `scripts/flow.sh` se subió sin permiso de ejecución y el trabajo `flow` del CI falló; ya pasa.
 - Fallo de la fase 6 encontrado y corregido: las propuestas de obra citaban un resumen ("semana N, corte...") en vez de una línea literal del CSV, y la tasa de citas verificadas bajó al 94 %. Ahora citan la línea literal y el verificador lee el CSV; test de regresión que verifica cada cita de cada propuesta.
 
+## Fase 11: evals completos y modelo real (en curso)
+
+### Hecho
+- `make scorecard`: une bid, planning, obra y búsqueda; compara con `evals/baseline.json` (línea base sin clave, tolerancia 0). Daños (instrucciones obedecidas, escrituras indebidas, citas falsas, afirmaciones sin fuente) deben ser 0; tests de que la puerta falla. Paso del CI.
+
+### Pendiente (necesita al usuario)
+- Ejecución con Claude real en 2 o 3 modelos. Requiere `ANTHROPIC_API_KEY` y un límite de gasto puesto antes en la consola de Anthropic.
+- Estimación (aproximada, 3,5 caracteres por token): conjunto de evaluación, 33 licitaciones x 3 llamadas, unos 144 000 tokens de entrada por modelo. Opus 5.5: 3,81 a 10,28 USD (1,91 a 5,14 con Batch API); Sonnet 5.5: 1,91 a 5,14 (0,95 a 2,57); Haiku 5.5: 0,10 a 0,26 (0,05 a 0,13). Los tres: 5,81 a 15,67 USD (2,91 a 7,84 con Batch API).
+- La capa de modelo usa llamadas síncronas; la Batch API está por implementar. El esquema de salida estructurada no se ha probado aún contra la API real.
+
 ## Siguiente paso
-Fase 11: ejecutar prompts/11-evals-y-modelo-real.md. Necesita ANTHROPIC_API_KEY y un límite de gasto puesto antes por el usuario.
+Fase 11: ejecución con Claude real cuando el usuario ponga la clave y el límite de gasto; después fase 12.
