@@ -157,3 +157,17 @@ def test_qa_refuses_answers_with_fabricated_citations():
     docs, pipe = qa_setup()
     a = answer("¿Cuál es el plazo de ejecución?", docs, pipe, Fabricating())
     assert not a.found and a.answer == NO_CONSTA
+
+
+def test_every_citation_of_every_proposal_is_literal_and_verifiable(dev_split):
+    """Regression: site reports once cited a summary instead of a literal line."""
+    core = RecordingCore()
+    rates = load_rates(dev_split / "company" / "tarifas.json")
+    folder = dev_split / "tenders" / "D-011"
+    analyse_tender(folder, FakeModel(None), core, "2027-01-04", rates)
+    docs = TenderDocs.load(folder)
+    types = {p["type"] for p in core.proposals}
+    assert {"PROGRESS_UPDATE", "REPORT"} <= types
+    for p in core.proposals:
+        for c in p["citations"]:
+            assert docs.verify(Citation(**c)), (p["type"], c)

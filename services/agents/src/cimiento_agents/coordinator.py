@@ -9,9 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import telemetry
+from . import telemetry, tracing
 from .bid_analyst import SYSTEM, BidExtraction, ExtractedField, rule_based_extract, user_prompt
-from .citations import Citation, TenderDocs
+from .citations import SITE_DOCUMENT, Citation, TenderDocs
 from .core_client import Core
 from .injection import detect
 from .llm import Model
@@ -24,6 +24,19 @@ from .takeoff import SYSTEM as TAKEOFF_SYSTEM
 from .takeoff import TakeoffError, TakeoffReading, compute_items, rule_based_read
 from .tender_agents import Rate, bid_no_bid, budget_lines, risk_signals
 from .textnorm import normalize
+
+# One span per agent (the model calls inside get their own gen_ai spans).
+compute_items = tracing.traced("agent.takeoff_analyst")(compute_items)
+build_schedule = tracing.traced("agent.planner")(build_schedule)
+budget_lines = tracing.traced("agent.cost_estimator")(budget_lines)
+risk_signals = tracing.traced("agent.risk_analyst")(risk_signals)
+bid_no_bid = tracing.traced("agent.bid_no_bid")(bid_no_bid)
+proposal_draft = tracing.traced("agent.proposal_writer")(proposal_draft)
+analyse = tracing.traced("agent.progress_analyst")(analyse)
+weekly_report = tracing.traced("agent.report_writer")(weekly_report)
+minutes = tracing.traced("agent.report_writer")(minutes)
+daily_report = tracing.traced("agent.report_writer")(daily_report)
+rfi = tracing.traced("agent.report_writer")(rfi)
 
 PROJECT = "LICITACIONES"
 SIGNAL_INJECTION = "INJECTION_DETECTED"
@@ -63,13 +76,16 @@ def _merge(*groups: list[Citation]) -> list[Citation]:
     return out
 
 
-def analyse_tender(
+def _analyse_tender(
     folder: Path, model: Model, core: Core, planned_start: str, rates: dict[str, Rate] | None = None
 ) -> TenderRun:
     """Bid analysis always; with company rates also takeoff, budget, risks, bid/no-bid
     and the proposal draft."""
     docs = TenderDocs.load(folder)
-    with telemetry.timed("bid_analysis", tender=docs.tender) as t:
+    with (
+        telemetry.timed("bid_analysis", tender=docs.tender) as t,
+        tracing.span("agent.bid_analyst", **{"cimiento.tender.id": docs.tender}),
+    ):
         result = model.run(
             "bid_analysis",
             SYSTEM,
@@ -250,13 +266,13 @@ def analyse_site(run: TenderRun, folder: Path, core: Core, tender_id: int) -> No
         return
     progress = analyse(run.tender, site, run.schedule)
     run.progress = progress
-    csv_cite = [
-        {
-            "document": "obra/avance_semanal.csv",
-            "page": 1,
-            "text": f"semana {progress.week}, corte {progress.cut_date}",
-        }
-    ]
+    # Cite a literal line of the weekly file: the first row of the status week.
+    week_row = next(
+        line
+        for line in (site / "avance_semanal.csv").read_text(encoding="utf-8").splitlines()
+        if line.startswith(f"{progress.week};{progress.cut_date};")
+    )
+    csv_cite = [{"document": SITE_DOCUMENT, "page": 1, "text": week_row}]
     p = core.submit(tender_id, "PROGRESS_UPDATE", progress_payload(progress), csv_cite, [])
     run.proposal_ids.append(p["id"])
     known = known_records(progress, [], [])
@@ -268,3 +284,15 @@ def analyse_site(run: TenderRun, folder: Path, core: Core, tender_id: int) -> No
         p = core.submit(tender_id, "REPORT", rep.payload(), csv_cite, [])
         run.proposal_ids.append(p["id"])
         run.reports.append(rep.kind)
+
+
+def analyse_tender(
+    folder: Path, model: Model, core: Core, planned_start: str, rates: dict[str, Rate] | None = None
+) -> TenderRun:
+    """One trace per tender: every agent, model call and core request below this span."""
+    with tracing.span("cimiento.tender", **{"cimiento.tender.id": folder.name}) as s:
+        run = _analyse_tender(folder, model, core, planned_start, rates)
+        tracing.set_attributes(
+            s, **{"cimiento.proposals": len(run.proposal_ids), "cimiento.source": run.source}
+        )
+        return run
