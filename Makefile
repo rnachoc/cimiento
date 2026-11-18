@@ -113,6 +113,8 @@ eval-retrieval: data-if-missing ## Retrieval hit@1/hit@5 per method; writes eval
 	cd evals && FASTEMBED_CACHE_PATH=$${FASTEMBED_CACHE_PATH:-$$HOME/.cache/fastembed} \
 	  uv run cimiento-evals retrieval --data ../data/generated --out reports --config config/search.json
 
+# Runs the bid, planning and site evals (keyless unless ANTHROPIC_API_KEY is set) and gates them
+# against evals/baseline.json: harms must be 0, scores may only drop within the tolerance.
 .PHONY: scorecard
-scorecard: ## Compare evals against evals/baseline.json (phase 11)
-	@echo "Not implemented yet: arrives in phase 11." && exit 1
+scorecard: eval-bid eval-plan eval-site ## Gate: harms 0 and scores within tolerance of evals/baseline.json
+	cd evals && uv run cimiento-evals scorecard --reports reports --baseline baseline.json

@@ -55,6 +55,8 @@ jobs:
       - run: make data
       - run: ./scripts/flow.sh
       # every tender processed with telemetry on; fails if any span carries document text
+      # gate: harms must be 0 and scores within tolerance of evals/baseline.json
+      - run: make scorecard
       - run: make cost-report
       - run: ./scripts/observability.sh
 

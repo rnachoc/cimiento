@@ -36,7 +36,32 @@ def main(argv: list[str] | None = None) -> int:
     cr.add_argument("--prices", type=Path, default=Path("evals/config/prices.json"))
     cr.add_argument("--data", type=Path, default=Path("data/generated"))
     cr.add_argument("--out", type=Path, default=Path("evals/reports"))
+    sc = sub.add_parser("scorecard", help="compare eval reports with the committed baseline")
+    sc.add_argument("--reports", type=Path, default=Path("evals/reports"))
+    sc.add_argument("--baseline", type=Path, default=Path("evals/baseline.json"))
+    sc.add_argument(
+        "--write-baseline", action="store_true", help="store the current values as baseline"
+    )
+    sc.add_argument("--label", default="keyless baseline (rule-based reader)")
     args = parser.parse_args(argv)
+
+    if args.cmd == "scorecard":
+        from .scorecard import collect, compare, render
+
+        current = collect(args.reports)
+        if args.write_baseline:
+            payload = {"label": args.label, "tolerance": 0.0, **current}
+            text = json.dumps(payload, indent=2, sort_keys=True)
+            args.baseline.write_text(text + "\n", encoding="utf-8")
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+        ok, lines = compare(current, baseline)
+        bid = json.loads((args.reports / "bid.json").read_text(encoding="utf-8"))["eval"]
+        source = ", ".join(bid["sources"])
+        (args.reports / "scorecard.md").write_text(
+            render(ok, lines, baseline, source), encoding="utf-8"
+        )
+        print((args.reports / "scorecard.md").read_text(encoding="utf-8"))
+        return 0 if ok else 1
 
     if args.cmd == "cost":
         from .cost import check_no_content, load_spans, render, report
