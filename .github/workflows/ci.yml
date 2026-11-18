@@ -46,6 +46,15 @@ jobs:
       - run: cd web/console && npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
       - run: ./scripts/e2e.sh
 
+  flow:
+    # Intake -> agents -> proposals -> decision through Kafka; dead letters and replay.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make data
+      - run: ./scripts/flow.sh
+
   gitleaks:
     runs-on: ubuntu-24.04
     steps:

@@ -51,6 +51,11 @@ e2e: ## End-to-end: a real browser approves a proposal through the console
 	cd web/console && npm ci --no-audit --no-fund --loglevel=error && npx playwright install chromium
 	./scripts/e2e.sh
 
+# Tender intake -> agents -> proposals -> decision through a real Kafka, with dead letters and replay.
+.PHONY: flow
+flow: data-if-missing ## End-to-end event flow through Kafka (outbox, bridge, retries, dead letters)
+	./scripts/flow.sh
+
 .PHONY: test-py
 test-py:
 	@for s in $(PY_SERVICES); do echo "== $$s"; (cd $$s && uv run pytest -q) || exit 1; done
