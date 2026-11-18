@@ -1,0 +1,35 @@
+# Private notes, never published
+private/
+
+# Secrets
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Java
+target/
+*.class
+.mvn/wrapper/maven-wrapper.jar
+
+# Node
+node_modules/
+dist/
+.angular/
+
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.claude/settings.local.json
