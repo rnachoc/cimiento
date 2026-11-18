@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api, NOTE_REQUIRED, PortfolioItem, Stage, STAGE_LABELS } from '../api';
 
-interface Column { stage: Stage; label: string; items: PortfolioItem[]; }
+interface Column { stage: Stage | 'CLOSED'; label: string; items: PortfolioItem[]; }
 
 const OPEN: Stage[] = ['TO_REVIEW', 'UNDER_REVIEW', 'DECISION_PENDING', 'IN_PREPARATION', 'SUBMITTED'];
 const CLOSED: Stage[] = ['AWARDED', 'LOST', 'DISCARDED'];
@@ -53,10 +53,13 @@ export function daysLeft(date: string, today: Date = new Date()): number {
                 }
               </div>
               <p class="title">{{ t.title }}</p>
+              @if (col.stage === 'CLOSED') {
+                <span class="pill end" [class.ok]="t.stage === 'AWARDED'">{{ label(t.stage) }}</span>
+              }
               @if (t.bidDeadline) {
                 <p class="deadline" [class.soon]="isSoon(t)" [class.late]="isLate(t)">
-                  Presentación {{ t.bidDeadline }} · {{ deadlineText(t.bidDeadline) }}
-                  @if (!t.deadlineApproved) { <span class="muted">(sin aprobar)</span> }
+                  Presentación {{ t.bidDeadline }}@if (col.stage !== 'CLOSED') { · {{ deadlineText(t.bidDeadline) }} }
+                  @if (!t.deadlineApproved) { <span class="muted">&nbsp;(sin aprobar)</span> }
                 </p>
               } @else {
                 <p class="deadline muted">Sin fecha de presentación</p>
@@ -103,12 +106,12 @@ export function daysLeft(date: string, today: Date = new Date()): number {
     h1 { font-size: clamp(2.2rem, 5.5vw, 4.4rem); line-height: 1.02; letter-spacing: -0.04em; margin: 12px 0 18px; max-width: 16ch; }
     .count { background: linear-gradient(120deg, var(--accent), #b6ff8f 40%, var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0 0 30px; }
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
     .stat { padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
     .n { font-size: 2.2rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
     .n.alert { color: var(--accent-3); }
     .n.ok { color: var(--ok); }
-    .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, 1fr); gap: 16px; overflow-x: auto;
+    .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: 16px; overflow-x: auto;
       padding: 28px 8px 32px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
     .col { scroll-snap-align: start; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .col-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
@@ -119,6 +122,7 @@ export function daysLeft(date: string, today: Date = new Date()): number {
     .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .tender { font-weight: 800; }
     .title { margin: 0; font-weight: 600; line-height: 1.3; }
+    .pill.end { align-self: flex-start; }
     .deadline { margin: 0; font-size: .9rem; color: var(--muted); }
     .deadline.soon { color: var(--warn); }
     .deadline.late { color: var(--accent-3); }
@@ -150,11 +154,16 @@ export class Portfolio {
   readonly open = computed(() => this.items().filter((t) => OPEN.includes(t.stage)));
   readonly dueSoon = computed(() => this.open().filter((t) => this.isSoon(t) || this.isLate(t)).length);
   readonly waiting = computed(() => this.items().reduce((n, t) => n + t.pendingReviews, 0));
-  readonly columns = computed<Column[]>(() => [...OPEN, ...CLOSED].map((stage) => ({
-    stage, label: STAGE_LABELS[stage],
-    items: this.items().filter((t) => t.stage === stage)
-      .sort((a, b) => (a.bidDeadline ?? '9999').localeCompare(b.bidDeadline ?? '9999') || a.code.localeCompare(b.code)),
-  })));
+  readonly columns = computed<Column[]>(() => {
+    const byDeadline = (a: PortfolioItem, b: PortfolioItem) =>
+      (a.bidDeadline ?? '9999').localeCompare(b.bidDeadline ?? '9999') || a.code.localeCompare(b.code);
+    const open: Column[] = OPEN.map((stage) => ({
+      stage, label: STAGE_LABELS[stage], items: this.items().filter((t) => t.stage === stage).sort(byDeadline),
+    }));
+    // won, lost and discarded share one column: they need no further action
+    const closed = this.items().filter((t) => CLOSED.includes(t.stage)).sort((a, b) => a.code.localeCompare(b.code));
+    return [...open, { stage: 'CLOSED', label: 'Cerradas', items: closed }];
+  });
 
   constructor() {
     this.load();

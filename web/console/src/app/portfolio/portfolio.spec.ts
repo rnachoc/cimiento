@@ -60,11 +60,12 @@ describe('Portfolio', () => {
     expect(el.querySelector('[data-testid="open-count"]')?.textContent?.trim()).toBe('3');
     expect(el.querySelector('[data-testid="due-soon"]')?.textContent?.trim()).toBe('2');
     expect(el.querySelector('[data-testid="col-TO_REVIEW"]')?.querySelectorAll('article').length).toBe(2);
-    expect(el.querySelector('[data-testid="col-AWARDED"] [data-testid="tender-E-003"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="col-CLOSED"] [data-testid="tender-E-003"]')?.textContent).toContain('Adjudicada');
     expect(el.querySelector('[data-testid="tender-E-002"]')?.classList.contains('late')).toBe(true);
     expect(el.querySelector('[data-testid="tender-E-001"]')?.textContent).toContain('en 3 días');
     expect(el.querySelector('[data-testid="tender-E-001"]')?.textContent).toContain('Ofertar');
     expect(el.querySelector('[data-testid="tender-E-001"]')?.textContent).toContain('4 por revisar');
+    expect(el.querySelector('[data-testid="tender-E-003"]')?.textContent).not.toContain('hace');
     // a final stage offers no moves
     expect(el.querySelector('[data-testid="tender-E-003"] button')).toBeNull();
   });
