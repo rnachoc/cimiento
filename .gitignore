@@ -37,3 +37,6 @@ Thumbs.db
 
 # Local tooling
 .claude/settings.local.json
+
+# Per-question eval outcomes (large, regenerated)
+evals/reports/*.jsonl

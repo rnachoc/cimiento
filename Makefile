@@ -7,7 +7,7 @@ export UV_LINK_MODE ?= copy
 # The core needs a local JDK 17+ and Docker (integration tests use Testcontainers).
 CORE_MVN := cd services/core && ./mvnw
 
-PY_SERVICES := data/generator services/agents services/mcp
+PY_SERVICES := data/generator services/agents services/mcp evals
 DATA_DIR := data/generated
 DEV_SEED := 42
 EVAL_SEED := 1337
@@ -65,8 +65,18 @@ demo: ## Keyless end-to-end demo (phase 12)
 	@echo "Not implemented yet: arrives in phase 12." && exit 1
 
 .PHONY: eval
-eval: ## Run evals (phases 3 to 6)
-	@echo "Not implemented yet: arrives in phases 3 to 6." && exit 1
+eval: eval-retrieval eval-bid ## Run every eval implemented so far
+
+# Keyless by default (rule-based reader, labelled as such). With ANTHROPIC_API_KEY it uses Claude.
+.PHONY: eval-bid
+eval-bid: data-if-missing ## Bid analyst: fields, citations, planted instructions; writes evals/reports/bid.md
+	cd evals && uv run cimiento-evals bid --data ../data/generated --out reports --recordings recordings
+
+# Local models are cached in ~/.cache/fastembed (first run downloads about 0.8 GB).
+.PHONY: eval-retrieval
+eval-retrieval: data-if-missing ## Retrieval hit@1/hit@5 per method; writes evals/reports/retrieval.md
+	cd evals && FASTEMBED_CACHE_PATH=$${FASTEMBED_CACHE_PATH:-$$HOME/.cache/fastembed} \
+	  uv run cimiento-evals retrieval --data ../data/generated --out reports --config config/search.json
 
 .PHONY: scorecard
 scorecard: ## Compare evals against evals/baseline.json (phase 11)

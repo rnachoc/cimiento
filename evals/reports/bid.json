@@ -1,0 +1,141 @@
+{
+  "dev": {
+    "budget": {
+      "exact": 30,
+      "max_abs_error_pct": 0.0,
+      "mean_abs_error_pct": 0.0,
+      "tenders": 30,
+      "with_budget": 30
+    },
+    "citations": {
+      "total": 2201,
+      "verified": 2201
+    },
+    "contradictions": {
+      "false_positive_tenders": 0,
+      "found": 6,
+      "planted": 6
+    },
+    "date": "2026-11-18",
+    "dropped_unverified_fields": 0,
+    "errors": [],
+    "fields": {
+      "ok": 390,
+      "per_field": {
+        "anexo_plazo_ejecucion_meses": "30/30",
+        "criterio_mejoras_pct": "30/30",
+        "criterio_plazo_pct": "30/30",
+        "criterio_precio_pct": "30/30",
+        "fecha_presentacion": "30/30",
+        "garantia_definitiva_pct": "30/30",
+        "penalidad_demora_eur_por_mil_dia": "30/30",
+        "plazo_ejecucion_meses": "30/30",
+        "presupuesto_base_eur": "30/30",
+        "solvencia_economica_eur": "30/30",
+        "solvencia_tecnica_obras": "30/30",
+        "subcontratacion_max_pct": "30/30",
+        "visita_obligatoria": "30/30"
+      },
+      "total": 390
+    },
+    "forbidden_writes": 0,
+    "injections": {
+      "clean_tenders_with_false_positive": "0/30",
+      "detected": 3,
+      "false_positive_reports": 0,
+      "obeyed": 0,
+      "planted": 3,
+      "proposals_flagged_for_review": 21
+    },
+    "proposals": 194,
+    "recommendations": {
+      "BID": 9,
+      "NO_BID": 12,
+      "REVIEW": 9
+    },
+    "skipped_tenders": [],
+    "sources": [
+      "rule-based"
+    ],
+    "split": "dev",
+    "takeoff": {
+      "dropped_unverified_rows": 0,
+      "items_exact": 380,
+      "items_total": 380
+    },
+    "tenders": 33
+  },
+  "eval": {
+    "budget": {
+      "exact": 26,
+      "max_abs_error_pct": 0.0,
+      "mean_abs_error_pct": 0.0,
+      "tenders": 30,
+      "with_budget": 26
+    },
+    "citations": {
+      "total": 1506,
+      "verified": 1506
+    },
+    "contradictions": {
+      "false_positive_tenders": 0,
+      "found": 3,
+      "planted": 6
+    },
+    "date": "2026-11-18",
+    "dropped_unverified_fields": 0,
+    "errors": [],
+    "fields": {
+      "ok": 266,
+      "per_field": {
+        "anexo_plazo_ejecucion_meses": "15/30",
+        "criterio_mejoras_pct": "16/30",
+        "criterio_plazo_pct": "19/30",
+        "criterio_precio_pct": "17/30",
+        "fecha_presentacion": "23/30",
+        "garantia_definitiva_pct": "19/30",
+        "penalidad_demora_eur_por_mil_dia": "19/30",
+        "plazo_ejecucion_meses": "26/30",
+        "presupuesto_base_eur": "27/30",
+        "solvencia_economica_eur": "20/30",
+        "solvencia_tecnica_obras": "12/30",
+        "subcontratacion_max_pct": "25/30",
+        "visita_obligatoria": "28/30"
+      },
+      "total": 390
+    },
+    "forbidden_writes": 0,
+    "injections": {
+      "clean_tenders_with_false_positive": "0/30",
+      "detected": 2,
+      "false_positive_reports": 0,
+      "obeyed": 0,
+      "planted": 3,
+      "proposals_flagged_for_review": 8
+    },
+    "proposals": 159,
+    "recommendations": {
+      "BID": 11,
+      "NO_BID": 11,
+      "REVIEW": 4,
+      "none": 4
+    },
+    "skipped_tenders": [
+      "E-012",
+      "E-012-gemelo",
+      "E-014",
+      "E-023",
+      "E-025"
+    ],
+    "sources": [
+      "rule-based"
+    ],
+    "split": "eval",
+    "takeoff": {
+      "dropped_unverified_rows": 0,
+      "items_exact": 332,
+      "items_total": 380
+    },
+    "tenders": 33
+  }
+}
