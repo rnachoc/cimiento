@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <a class="skip" href="#main">Saltar al contenido</a>
     <header class="topbar glass">
@@ -11,7 +11,10 @@ import { RouterLink, RouterOutlet } from '@angular/router';
         <span class="mark" aria-hidden="true"></span>
         <span>Cimiento</span>
       </a>
-      <span class="tag">Consola de revisión</span>
+      <nav class="nav" aria-label="Secciones">
+        <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Bandeja</a>
+        <a routerLink="/cartera" routerLinkActive="on" ariaCurrentWhenActive="page">Cartera</a>
+      </nav>
       <span class="who" title="Las credenciales las añade el servidor; el navegador no guarda ninguna">
         Revisor
       </span>
@@ -29,8 +32,11 @@ import { RouterLink, RouterOutlet } from '@angular/router';
     }
     .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; text-decoration: none; }
     .mark { width: 22px; height: 22px; border-radius: 7px; background: conic-gradient(from 200deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent)); box-shadow: 0 0 24px rgba(83,252,24,.45); }
-    .tag { color: var(--muted); font-size: .9rem; }
-    @media (max-width: 520px) { .tag { display: none; } }
+    .nav { display: flex; gap: 4px; }
+    .nav a { padding: 6px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .92rem; transition: color .2s, background .2s; }
+    .nav a:hover { color: var(--text); }
+    .nav a.on { color: var(--text); background: var(--surface-2); }
+    @media (max-width: 520px) { .topbar { gap: 10px; padding: 10px 14px; } .nav a { padding: 6px 10px; } }
     .who { margin-left: auto; font-size: .85rem; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
     main { width: min(1280px, calc(100% - 24px)); margin: 0 auto; outline: none; }
     .foot { text-align: center; color: var(--muted); font-size: .8rem; padding: 48px 16px; }

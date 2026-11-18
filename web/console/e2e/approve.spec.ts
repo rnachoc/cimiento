@@ -51,6 +51,22 @@ test('a reviewer approves a schedule in a real browser and the core executes it'
   expect(after.status).toBe('EXECUTED');
   const schedule = await (await analyst.get(`/api/tenders/${tender.id}/schedule`)).json();
   expect(schedule.durationDays).toBe(13);
+
+  // the approved schedule downloads as MS Project XML through nginx
+  await page.getByTestId('export').waitFor();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export').click()]);
+  expect(download.suggestedFilename()).toBe(`planning-${code}-${proposal.id}.xml`);
+  const xml = await (await import('node:fs/promises')).readFile(await download.path(), 'utf8');
+  expect(xml).toContain('<Name>A02 Cimentación</Name>');
+
+  // the pipeline: the reviewer moves the tender, and the core refuses to skip its rules
+  await page.goto('/cartera');
+  const card = page.getByTestId(`tender-${code}`);
+  await expect(page.getByTestId('col-TO_REVIEW').getByTestId(`tender-${code}`)).toBeVisible();
+  await card.getByTestId(`move-${code}-UNDER_REVIEW`).click();
+  await expect(page.getByTestId('col-UNDER_REVIEW').getByTestId(`tender-${code}`)).toBeVisible();
+  const stages = await (await analyst.get(`/api/tenders/${tender.id}/stages`)).json();
+  expect(stages.map((s: { to: string }) => s.to)).toEqual(['UNDER_REVIEW']);
   expect(cspErrors).toEqual([]);
 });
 

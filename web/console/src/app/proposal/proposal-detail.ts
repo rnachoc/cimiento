@@ -24,6 +24,9 @@ interface Bar { code: string; name: string; start: number; width: number; critic
             <span class="pill" [class.fail]="r === 'INJECTION_DETECTED'">{{ r }}</span>
           }
         </div>
+        @if (exportable()) {
+          <a class="btn btn-ghost export" [href]="exportHref()" download data-testid="export">{{ exportLabel() }}</a>
+        }
         @if (injection()) {
           <p class="banner" role="note">Los documentos contienen texto que parece una instrucción dirigida a un sistema automático. Se trata como dato: no se ha obedecido.</p>
         }
@@ -133,6 +136,7 @@ interface Bar { code: string; name: string; start: number; width: number; critic
     .head { padding: 28px 8px 8px; }
     h1 { font-size: clamp(2rem, 4.5vw, 3.6rem); letter-spacing: -0.035em; line-height: 1.05; margin: 10px 0 16px; }
     .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .export { display: inline-flex; margin-top: 16px; text-decoration: none; }
     .banner { margin-top: 18px; padding: 14px 18px; border-radius: 14px; background: rgba(255,61,113,.12); border: 1px solid rgba(255,61,113,.5); }
     .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; margin-top: 24px; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -206,6 +210,21 @@ export class ProposalDetail {
       error: (e) => this.error.set(e?.status === 404 ? 'La propuesta no existe.' : 'No se pudo cargar la propuesta.'),
     });
     this.api.audit().subscribe({ next: (a) => this.allAudit.set(a) });
+  }
+
+  /** Schedules and budgets whose rules passed download as MS Project XML or BC3. */
+  exportable(): boolean {
+    const p = this.p();
+    return !!p && (p.type === 'SCHEDULE' || p.type === 'BUDGET') && (p.status === 'PENDING_REVIEW' || p.status === 'EXECUTED');
+  }
+
+  exportHref(): string {
+    return this.api.exportUrl(this.p()!.id);
+  }
+
+  exportLabel(): string {
+    const draft = this.p()!.status === 'EXECUTED' ? '' : ' (borrador)';
+    return (this.p()!.type === 'SCHEDULE' ? 'Descargar MS Project XML' : 'Descargar presupuesto BC3') + draft;
   }
 
   statusLabel(s: Proposal['status']): string {
