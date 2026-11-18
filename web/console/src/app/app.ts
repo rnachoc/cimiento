@@ -9,11 +9,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     <header class="topbar glass">
       <a routerLink="/" class="brand" aria-label="Cimiento, inicio">
         <span class="mark" aria-hidden="true"></span>
-        <span>Cimiento</span>
+        <span class="brand-name">Cimiento</span>
       </a>
       <nav class="nav" aria-label="Secciones">
         <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Bandeja</a>
         <a routerLink="/cartera" routerLinkActive="on" ariaCurrentWhenActive="page">Cartera</a>
+        <a routerLink="/direccion" routerLinkActive="on" ariaCurrentWhenActive="page">Dirección</a>
       </nav>
       <span class="who" title="Las credenciales las añade el servidor; el navegador no guarda ninguna">
         Revisor
@@ -36,7 +37,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     .nav a { padding: 6px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .92rem; transition: color .2s, background .2s; }
     .nav a:hover { color: var(--text); }
     .nav a.on { color: var(--text); background: var(--surface-2); }
-    @media (max-width: 520px) { .topbar { gap: 8px; padding: 10px 14px; } .nav a { padding: 6px 10px; } .who { display: none; } }
+    @media (max-width: 520px) { .topbar { gap: 8px; padding: 10px 14px; } .nav a { padding: 6px 10px; } .who { display: none; } .brand-name { display: none; } }
     .who { margin-left: auto; font-size: .85rem; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
     main { width: min(1280px, calc(100% - 24px)); margin: 0 auto; outline: none; }
     .foot { text-align: center; color: var(--muted); font-size: .8rem; padding: 48px 16px; }

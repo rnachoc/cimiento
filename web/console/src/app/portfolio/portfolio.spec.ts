@@ -14,7 +14,7 @@ function isoIn(days: number): string {
 function item(id: number, code: string, extra: Partial<PortfolioItem> = {}): PortfolioItem {
   return {
     tenderId: id, code, title: `Licitación ${code}`, projectCode: 'LICITACIONES', stage: 'TO_REVIEW',
-    stageChangedAt: null, bidDeadline: null, deadlineApproved: false, recommendation: null, pendingReviews: 0,
+    createdAt: '2026-11-18T10:00:00Z', budgetTotal: null, stageChangedAt: null, bidDeadline: null, deadlineApproved: false, recommendation: null, pendingReviews: 0,
     proposals: 3, bidAnalysisApproved: false, next: ['UNDER_REVIEW', 'DISCARDED'], ...extra,
   };
 }

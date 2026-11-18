@@ -30,9 +30,27 @@ export type Outcome = 'APPROVE' | 'CORRECT' | 'REJECT';
 export type Stage = 'TO_REVIEW' | 'UNDER_REVIEW' | 'DECISION_PENDING' | 'IN_PREPARATION' | 'SUBMITTED'
   | 'AWARDED' | 'LOST' | 'DISCARDED';
 export interface PortfolioItem {
-  tenderId: number; code: string; title: string; projectCode: string; stage: Stage; stageChangedAt: string | null;
-  bidDeadline: string | null; deadlineApproved: boolean; recommendation: string | null;
-  pendingReviews: number; proposals: number; bidAnalysisApproved: boolean; next: Stage[];
+  tenderId: number; code: string; title: string; projectCode: string; stage: Stage; createdAt: string;
+  stageChangedAt: string | null; bidDeadline: string | null; deadlineApproved: boolean; recommendation: string | null;
+  budgetTotal: number | null; pendingReviews: number; proposals: number; bidAnalysisApproved: boolean; next: Stage[];
+}
+export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; at: string; }
+export interface CurvePoint { week: number; plannedPct: number; actualPct: number; }
+export interface Deviation {
+  activity: string; name: string; plannedPct: number; actualPct: number; delayDays: number;
+  delayIsLowerBound: boolean; totalFloat: number; critical: boolean; alarm: boolean;
+}
+export interface SiteView {
+  tenderId: number; tenderCode: string; statusWeek: number; cutDate: string; progressApproved: boolean;
+  scheduleApproved: boolean; plannedEnd: string; forecastEnd: string; contractDeadline: string | null;
+  analysis: { statusWeek: number; curve: CurvePoint[]; deviations: Deviation[]; plannedDuration: number;
+    forecastDuration: number; impactDays: number; impactIsLowerBound: boolean; };
+}
+export interface Dashboard {
+  tendersByStage: Record<Stage, number>; open: number; winRatePct: number | null; openBudget: number;
+  awardedBudget: number; meanMinutesInStage: Partial<Record<Stage, number>>; pendingByType: Record<string, number>;
+  oldestPendingHours: number | null; decisionsByOutcome: Record<string, number>; executedAutomatically: number;
+  executedByPerson: number; rulesFailed: number; upcomingDeadlines: { code: string; date: string; daysLeft: number }[];
 }
 
 /**
@@ -57,6 +75,26 @@ export class Api {
 
   portfolio(): Observable<PortfolioItem[]> {
     return this.http.get<PortfolioItem[]>('/api/portfolio');
+  }
+
+  portfolioItem(tenderId: number): Observable<PortfolioItem> {
+    return this.http.get<PortfolioItem>(`/api/portfolio/${tenderId}`);
+  }
+
+  tenderProposals(tenderId: number): Observable<Proposal[]> {
+    return this.http.get<Proposal[]>('/api/proposals', { params: { tenderId } });
+  }
+
+  stages(tenderId: number): Observable<StageChange[]> {
+    return this.http.get<StageChange[]>(`/api/tenders/${tenderId}/stages`);
+  }
+
+  site(tenderId: number): Observable<SiteView> {
+    return this.http.get<SiteView>(`/api/tenders/${tenderId}/site`);
+  }
+
+  dashboard(): Observable<Dashboard> {
+    return this.http.get<Dashboard>('/api/dashboard');
   }
 
   moveStage(tenderId: number, stage: Stage, note: string): Observable<PortfolioItem> {
@@ -101,3 +139,10 @@ export const STAGE_LABELS: Record<Stage, string> = {
 
 /** Stages that need a written reason (the core enforces the same list). */
 export const NOTE_REQUIRED: Stage[] = ['IN_PREPARATION', 'DISCARDED', 'LOST'];
+
+/** Euros with Spanish formatting, no decimals for large amounts. */
+export function euros(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: n >= 10000 ? 0 : 2 }).format(n);
+}

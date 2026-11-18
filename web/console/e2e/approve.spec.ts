@@ -67,6 +67,15 @@ test('a reviewer approves a schedule in a real browser and the core executes it'
   await expect(page.getByTestId('col-UNDER_REVIEW').getByTestId(`tender-${code}`)).toBeVisible();
   const stages = await (await analyst.get(`/api/tenders/${tender.id}/stages`)).json();
   expect(stages.map((s: { to: string }) => s.to)).toEqual(['UNDER_REVIEW']);
+
+  // the tender file gathers everything about the tender; the management view loads
+  await page.getByTestId(`open-${code}`).click();
+  await expect(page.getByTestId('tender-title')).toContainText(code);
+  await expect(page.getByTestId('stage')).toHaveText('En estudio');
+  await expect(page.locator('.g-bar')).toHaveCount(2);
+  await expect(page.getByTestId('history').locator('li')).toHaveCount(2);
+  await page.goto('/direccion');
+  await expect(page.getByTestId('funnel').locator('.b-row')).toHaveCount(8);
   expect(cspErrors).toEqual([]);
 });
 

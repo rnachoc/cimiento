@@ -14,7 +14,7 @@ interface Bar { code: string; name: string; start: number; width: number; critic
     @if (error()) { <p class="error glass" role="alert">{{ error() }}</p> }
     @if (p(); as p) {
       <header class="head reveal">
-        <p class="eyebrow">{{ typeLabel() }} · {{ p.tenderCode }} · #{{ p.id }}</p>
+        <p class="eyebrow">{{ typeLabel() }} · <a class="tlink" [routerLink]="['/licitaciones', p.tenderId]">{{ p.tenderCode }}</a> · #{{ p.id }}</p>
         <h1>{{ title() }}</h1>
         <div class="badges">
           <span class="pill" data-testid="status" [class.ok]="p.status === 'EXECUTED'"
@@ -136,6 +136,7 @@ interface Bar { code: string; name: string; start: number; width: number; critic
     .head { padding: 28px 8px 8px; }
     h1 { font-size: clamp(2rem, 4.5vw, 3.6rem); letter-spacing: -0.035em; line-height: 1.05; margin: 10px 0 16px; }
     .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tlink { color: inherit; }
     .export { display: inline-flex; margin-top: 16px; text-decoration: none; }
     .banner { margin-top: 18px; padding: 14px 18px; border-radius: 14px; background: rgba(255,61,113,.12); border: 1px solid rgba(255,61,113,.5); }
     .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; margin-top: 24px; }

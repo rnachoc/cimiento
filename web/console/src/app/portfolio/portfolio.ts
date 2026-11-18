@@ -52,7 +52,7 @@ export function daysLeft(date: string, today: Date = new Date()): number {
                         [class.warn]="t.recommendation === 'REVIEW'">{{ recLabel(t.recommendation) }}</span>
                 }
               </div>
-              <p class="title">{{ t.title }}</p>
+              <a class="title" [routerLink]="['/licitaciones', t.tenderId]" [attr.data-testid]="'open-' + t.code">{{ t.title }}</a>
               @if (col.stage === 'CLOSED') {
                 <span class="pill end" [class.ok]="t.stage === 'AWARDED'">{{ label(t.stage) }}</span>
               }
@@ -121,7 +121,8 @@ export function daysLeft(date: string, today: Date = new Date()): number {
     .card.late { border-color: rgba(255,61,113,.6); }
     .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .tender { font-weight: 800; }
-    .title { margin: 0; font-weight: 600; line-height: 1.3; }
+    .title { margin: 0; font-weight: 600; line-height: 1.3; text-decoration: none; }
+    .title:hover { color: var(--accent); }
     .pill.end { align-self: flex-start; }
     .deadline { margin: 0; font-size: .9rem; color: var(--muted); }
     .deadline.soon { color: var(--warn); }
