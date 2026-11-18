@@ -17,7 +17,9 @@ import dev.cimiento.core.service.SiteService;
 import dev.cimiento.core.service.ProjectService;
 import dev.cimiento.core.service.ProposalService;
 import dev.cimiento.core.service.QueryService;
+import dev.cimiento.core.security.Actor;
 import dev.cimiento.core.web.ApiDtos.AuditView;
+import dev.cimiento.core.web.ApiDtos.DecisionView;
 import dev.cimiento.core.web.ApiDtos.CreateProject;
 import dev.cimiento.core.web.ApiDtos.CreateTender;
 import dev.cimiento.core.web.ApiDtos.DecisionRequest;
@@ -129,15 +131,15 @@ public class ApiController {
     }
 
     @PostMapping("/tenders/{id}/stage")
-    public PortfolioService.Item moveStage(@RequestAttribute(ApiKeyFilter.ROLE_ATTRIBUTE) Role role,
+    public PortfolioService.Item moveStage(@RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor,
                                            @PathVariable Long id, @Valid @RequestBody StageRequest body) {
-        return portfolio.move(role, id, body.stage(), body.note());
+        return portfolio.move(actor, id, body.stage(), body.note());
     }
 
     @GetMapping("/tenders/{id}/stages")
     public List<StageChangeView> stageHistory(@PathVariable Long id) {
         return portfolio.history(id).stream().map(c -> new StageChangeView(c.getId(), c.getFromStage(),
-                c.getToStage(), c.getNote(), c.getActorRole(), c.getCreatedAt())).toList();
+                c.getToStage(), c.getNote(), c.getActorRole(), c.getPerson(), c.getCreatedAt())).toList();
     }
 
     @GetMapping("/proposals/{id}/export")
@@ -183,9 +185,9 @@ public class ApiController {
     }
 
     @PostMapping("/proposals/{id}/decision")
-    public ProposalView decide(@RequestAttribute(ApiKeyFilter.ROLE_ATTRIBUTE) Role role, @PathVariable Long id,
+    public ProposalView decide(@RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor, @PathVariable Long id,
                                @Valid @RequestBody DecisionRequest body) {
-        return view(proposals.decide(role, id, body.outcome(), body.comment(), body.correctedPayload()));
+        return view(proposals.decide(actor, id, body.outcome(), body.comment(), body.correctedPayload()));
     }
 
     @GetMapping("/audit")
@@ -216,12 +218,14 @@ public class ApiController {
         return new ProposalView(p.getId(), p.getTender().getId(), p.getTender().getCode(), p.getType(),
                 p.getStatus().name(), p.getRoute(), json.read(p.getPayload()), json.read(p.getExecutedPayload()),
                 json.read(p.getCitations()), json.read(p.getSignals()), json.read(p.getRuleResults()),
-                json.read(p.getRoutingReasons()), p.getCreatedBy(), p.getCreatedAt(), p.getDecidedAt());
+                json.read(p.getRoutingReasons()), p.getCreatedBy(), p.getCreatedAt(), p.getDecidedAt(),
+                json.read(p.getCorrectedPayload()), p.getCorrectedBy(), proposals.decisions(p.getId()).stream()
+                        .map(d -> new DecisionView(d.getOutcome(), d.getPerson(), d.getCreatedAt())).toList());
     }
 
     private AuditView view(AuditEntry e) {
         JsonNode details = json.read(e.getDetails());
-        return new AuditView(e.getSeq(), e.getCreatedAt(), e.getActorRole(), e.getAction(), e.getEntityType(),
+        return new AuditView(e.getSeq(), e.getCreatedAt(), e.getActorRole(), e.getActorPerson(), e.getAction(), e.getEntityType(),
                 e.getEntityId(), details, e.getPrevHash(), e.getHash());
     }
 }

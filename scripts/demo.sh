@@ -14,6 +14,10 @@ if [ ! -f "$STATE" ]; then
     "$(rand agent)" "$(rand analyst)" "$(rand reviewer)" > "$STATE"
   chmod 600 "$STATE"
 fi
+if ! grep -q '^CIMIENTO_PEOPLE=' "$STATE"; then   # people arrived in phase 15; older state files get them too
+  . "$ROOT/scripts/people.sh"
+  people_env >> "$STATE"
+fi
 set -a; . "$STATE"; set +a
 export POSTGRES_PORT="${DEMO_POSTGRES_PORT:-35432}" CORE_PORT="${DEMO_CORE_PORT:-38080}" CONSOLE_PORT="${DEMO_CONSOLE_PORT:-38088}"
 CORE_URL="http://localhost:${CORE_PORT}"
@@ -40,6 +44,9 @@ sed -n '1,12p' "$ROOT/evals/reports/scorecard.md"
 cat <<EOF
 
 Review console:  http://localhost:${CONSOLE_PORT}   (approve, correct or reject the proposals)
+  Sign in as:    gerencia / ${GERENCIA_TOKEN}   (management: decides everything)
+                 estudios / ${ESTUDIOS_TOKEN}   (estimating: bids, takeoffs, budgets)
+                 obra     / ${OBRA_TOKEN}   (site manager: schedules, progress, reports)
 Core API:        ${CORE_URL}/api  (role keys in .demo-keys)
 Stop everything: make demo-down
 EOF

@@ -68,6 +68,10 @@ def main() -> None:
 
     # 2. audit events through the outbox
     bid = next(p for p in proposals if p["type"] == "BID_ANALYSIS")
+    # decisions are taken by a person: management signs in (the session cookie stays in the client)
+    reviewer.post(
+        "/api/session", json={"username": "gerencia", "token": os.environ["GERENCIA_TOKEN"]}
+    ).raise_for_status()
     reviewer.post(
         f"/api/proposals/{bid['id']}/decision", json={"outcome": "APPROVE", "comment": "ok"}
     ).raise_for_status()
@@ -87,8 +91,14 @@ def main() -> None:
         "TENDER_CREATED" in actions and actions.count("PROPOSAL_SUBMITTED") == len(proposals),
         f"audit events on {AUDIT}: {len(events)}",
     )
-    check(all(e["_key"] == PROJECT for e in events), "every event keyed by project")
-    seqs = [e["seq"] for e in events]
+    # sign-in and sign-out belong to no project: they are keyed "console"
+    project_events = [e for e in events if e["entityType"] != "person"]
+    check(
+        all(e["_key"] == PROJECT for e in project_events)
+        and all(e["_key"] == "console" for e in events if e["entityType"] == "person"),
+        "every event keyed by project (sessions by console)",
+    )
+    seqs = [e["seq"] for e in project_events]
     check(seqs == sorted(seqs), "events of the project in audit order")
     check(
         any(e["action"] == "DECISION_RECORDED" and e["entityId"] == str(bid["id"]) for e in events)

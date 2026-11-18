@@ -44,11 +44,21 @@ public class DashboardService {
                 i.bidDeadline(), i.budgetTotal())).toList();
         var moves = changes.findAll().stream().map(c -> new Metrics.Move(codes.get(c.getTenderId()), c.getFromStage(),
                 c.getToStage(), c.getCreatedAt())).toList();
+        // With four eyes a proposal can have two decisions (CORRECT, then APPROVE or REJECT): a final
+        // rejection counts as REJECT, a correction that was then approved as CORRECT.
         Map<Long, Decision.Outcome> outcome = decisions.findAll().stream()
-                .collect(Collectors.toMap(Decision::getProposalId, Decision::getOutcome));
+                .sorted(java.util.Comparator.comparing(Decision::getId))
+                .collect(Collectors.toMap(Decision::getProposalId, Decision::getOutcome, DashboardService::merge));
         var facts = proposals.findAll().stream().map(p -> new Metrics.ProposalFacts(p.getType().name(),
                 p.getStatus().name(), p.getRoute() == null ? null : p.getRoute().name(), p.getCreatedAt(),
                 outcome.containsKey(p.getId()) ? outcome.get(p.getId()).name() : null)).toList();
         return Metrics.compute(tenders, moves, facts, clock.instant(), LocalDate.now(clock));
+    }
+
+    static Decision.Outcome merge(Decision.Outcome first, Decision.Outcome then) {
+        if (then == Decision.Outcome.REJECT) {
+            return Decision.Outcome.REJECT;
+        }
+        return first == Decision.Outcome.CORRECT ? Decision.Outcome.CORRECT : then;
     }
 }

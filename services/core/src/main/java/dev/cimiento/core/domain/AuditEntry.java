@@ -37,6 +37,9 @@ public class AuditEntry {
     @Column(nullable = false)
     private String details;
 
+    @Column(name = "actor_person")
+    private String actorPerson;
+
     @Column(name = "prev_hash", nullable = false)
     private String prevHash;
 
@@ -46,10 +49,11 @@ public class AuditEntry {
     protected AuditEntry() {
     }
 
-    public AuditEntry(Instant createdAt, String actorRole, String action, String entityType, String entityId,
-                      String details, String prevHash, String hash) {
+    public AuditEntry(Instant createdAt, String actorRole, String actorPerson, String action, String entityType,
+                      String entityId, String details, String prevHash, String hash) {
         this.createdAt = createdAt;
         this.actorRole = actorRole;
+        this.actorPerson = actorPerson;
         this.action = action;
         this.entityType = entityType;
         this.entityId = entityId;
@@ -68,6 +72,15 @@ public class AuditEntry {
 
     public String getActorRole() {
         return actorRole;
+    }
+
+    public String getActorPerson() {
+        return actorPerson;
+    }
+
+    /** Actor text in the hash: the role alone for rows without a person, as before phase 15. */
+    public String getActorForHash() {
+        return actorPerson == null ? actorRole : actorRole + "/" + actorPerson;
     }
 
     public String getAction() {

@@ -25,6 +25,8 @@ cimiento:
     agent: ${CIMIENTO_AGENT_KEY:}
     analyst: ${CIMIENTO_ANALYST_KEY:}
     reviewer: ${CIMIENTO_REVIEWER_KEY:}
+  # People who decide in the console: JSON array of {username, displayName, role, tokenHash}.
+  people: ${CIMIENTO_PEOPLE:}
   outbox:
     # Publish audit events to Kafka (cimiento.audit). Off by default: the outbox table still fills.
     enabled: ${CIMIENTO_OUTBOX_ENABLED:false}

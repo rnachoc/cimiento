@@ -11,7 +11,8 @@ import dev.cimiento.core.repository.TenderStageChangeRepository;
 import dev.cimiento.core.rules.Pipeline;
 import dev.cimiento.core.rules.ProposalType;
 import dev.cimiento.core.rules.TenderStage;
-import dev.cimiento.core.security.Role;
+import dev.cimiento.core.rules.Authority;
+import dev.cimiento.core.security.Actor;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -79,7 +80,14 @@ public class PortfolioService {
     }
 
     @Transactional
-    public Item move(Role actor, Long tenderId, TenderStage to, String note) {
+    public Item move(Actor actor, Long tenderId, TenderStage to, String note) {
+        if (actor.person() == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "sign in as a person to move a tender");
+        }
+        List<Authority.Broken> broken = Authority.checkStage(actor.personRole(), to);
+        if (!broken.isEmpty()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "stage change not allowed for " + actor.person(), broken);
+        }
         Tender t = tenders.lockById(tenderId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "tender " + tenderId + " not found"));
         List<Proposal> ps = proposals.findByTenderIdOrderById(tenderId);
@@ -90,7 +98,8 @@ public class PortfolioService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "stage change not allowed", errors);
         }
         t.moveTo(to);
-        changes.save(new TenderStageChange(t.getId(), from, to, reason, actor.name()));
+        changes.save(new TenderStageChange(t.getId(), from, to, reason, actor.role().name(),
+                actor.person()));
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("code", t.getCode());
         details.put("from", from.name());

@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.cimiento.core.service.CanonicalJson;
+import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,12 +40,24 @@ class ApiIntegrationTest {
     static final String AGENT = "agent-" + UUID.randomUUID();
     static final String ANALYST = "analyst-" + UUID.randomUUID();
     static final String REVIEWER = "reviewer-" + UUID.randomUUID();
+    // People: personal tokens are random per run too; only their hashes reach the core.
+    static final String GERENCIA_TOKEN = "t-" + UUID.randomUUID();
+    static final String ESTUDIOS_TOKEN = "t-" + UUID.randomUUID();
+    static final String OBRA_TOKEN = "t-" + UUID.randomUUID();
 
     @DynamicPropertySource
     static void keys(DynamicPropertyRegistry registry) {
         registry.add("cimiento.keys.agent", () -> AGENT);
         registry.add("cimiento.keys.analyst", () -> ANALYST);
         registry.add("cimiento.keys.reviewer", () -> REVIEWER);
+        registry.add("cimiento.people", () -> "[" + person("gerencia", "Marta Gerencia", "MANAGEMENT", GERENCIA_TOKEN)
+                + "," + person("estudios", "Luis Estudios", "ESTIMATING", ESTUDIOS_TOKEN)
+                + "," + person("obra", "Ana Obra", "SITE_MANAGER", OBRA_TOKEN) + "]");
+    }
+
+    private static String person(String user, String name, String role, String token) {
+        return String.format("{\"username\":\"%s\",\"displayName\":\"%s\",\"role\":\"%s\",\"tokenHash\":\"%s\"}",
+                user, name, role, CanonicalJson.sha256(token));
     }
 
     @Container
@@ -62,11 +76,22 @@ class ApiIntegrationTest {
 
     long tenderId;
 
+    /** Session of the person acting in the console; sent with every REVIEWER call (null: nobody). */
+    Cookie session;
+
+    private Cookie signIn(String user, String token) throws Exception {
+        return call("POST", "/api/session", REVIEWER, "{'username':'" + user + "','token':'" + token + "'}", null)
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("cimiento_session");
+    }
+
     private ResultActions call(String method, String path, String key, String body, String idem) throws Exception {
         var req = method.equals("GET") ? get(path) : post(path).contentType(MediaType.APPLICATION_JSON)
                 .content(body == null ? "{}" : body.replace('\'', '"'));
         if (key != null) {
             req.header("X-Api-Key", key);
+        }
+        if (REVIEWER.equals(key) && session != null) {
+            req.cookie(session);
         }
         if (idem != null) {
             req.header("Idempotency-Key", idem);
@@ -87,6 +112,7 @@ class ApiIntegrationTest {
 
     @BeforeEach
     void tender() throws Exception {
+        session = signIn("gerencia", GERENCIA_TOKEN);
         call("POST", "/api/projects", REVIEWER, "{'code':'P-1','name':'Proyecto de prueba'}", null);
         String code = "T-" + UUID.randomUUID();
         var r = call("POST", "/api/tenders", AGENT, "{'projectCode':'P-1','code':'" + code
@@ -198,12 +224,28 @@ class ApiIntegrationTest {
 
         String goodCorrection = "{'outcome':'CORRECT','comment':'menos días','correctedPayload':{'activities':"
                 + "[{'code':'A01','name':'Tierras','duration':2}],'links':[]}}";
+        session = signIn("obra", OBRA_TOKEN);
         call("POST", "/api/proposals/" + id + "/decision", REVIEWER, goodCorrection, null)
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
+                .andExpect(jsonPath("$.correctedBy").value("obra"));
+        // four eyes: the person who corrected cannot approve, and nothing is executed yet
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.details[0].rule").value("SEGREGATION_OF_DUTIES"));
+        call("GET", "/api/tenders/" + tenderId + "/schedule", ANALYST, null, null).andExpect(status().isNotFound());
+        session = signIn("gerencia", GERENCIA_TOKEN);
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("EXECUTED"))
+                .andExpect(jsonPath("$.decisions[0].person").value("obra"))
+                .andExpect(jsonPath("$.decisions[1].person").value("gerencia"))
                 .andExpect(jsonPath("$.executedPayload.activities[0].duration").value(2));
         call("GET", "/api/tenders/" + tenderId + "/schedule", ANALYST, null, null)
                 .andExpect(jsonPath("$.durationDays").value(2));
+        // two decisions on one proposal: the management figures still load and count it as corrected
+        call("GET", "/api/dashboard", ANALYST, null, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.decisionsByOutcome.CORRECT").value(1));
     }
 
     @Test
@@ -439,5 +481,57 @@ class ApiIntegrationTest {
         assertThat(d.get("openBudget").decimalValue()).isGreaterThanOrEqualTo(new java.math.BigDecimal(total));
         // reading the dashboard writes nothing
         call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
+
+    @Test
+    void peopleSignInAndOnlyAPersonMayDecide() throws Exception {
+        call("POST", "/api/session", REVIEWER, "{'username':'gerencia','token':'wrong'}", null)
+                .andExpect(status().isUnauthorized());
+        call("POST", "/api/session", REVIEWER, "{'username':'nadie','token':'wrong'}", null)
+                .andExpect(status().isUnauthorized());
+        call("GET", "/api/session/me", REVIEWER, null, null)
+                .andExpect(jsonPath("$.username").value("gerencia"))
+                .andExpect(jsonPath("$.role").value("MANAGEMENT"));
+        long id = body(call("POST", "/api/proposals", AGENT, schedule(""), UUID.randomUUID().toString()))
+                .get("id").asLong();
+        session = null;
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isUnauthorized());
+        // the cookie only identifies a person on REVIEWER calls; machines still cannot decide
+        Cookie obra = signIn("obra", OBRA_TOKEN);
+        mvc.perform(post("/api/proposals/" + id + "/decision").header("X-Api-Key", AGENT).cookie(obra)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"APPROVE\"}"))
+                .andExpect(status().isForbidden());
+        // estimating does not decide schedules; the site manager does
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.details[0].rule").value("ROLE_SCOPE"));
+        session = obra;
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
+        assertThat(jdbc.queryForObject("SELECT actor_person FROM audit_entry WHERE action = 'DECISION_RECORDED' "
+                + "AND entity_id = ? ORDER BY seq DESC LIMIT 1", String.class, String.valueOf(id))).isEqualTo("obra");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+        // signing out ends the session
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/session")
+                .header("X-Api-Key", REVIEWER).cookie(obra)).andExpect(status().isNoContent());
+        call("GET", "/api/session/me", REVIEWER, null, null).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void bidNoBidMovesAreReservedToManagement() throws Exception {
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        move(REVIEWER, "UNDER_REVIEW", null).andExpect(status().isOk());
+        move(REVIEWER, "DISCARDED", "sin solvencia").andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.details[0].rule").value("STAGE_RESERVED_TO_MANAGEMENT"));
+        session = signIn("obra", OBRA_TOKEN);
+        move(REVIEWER, "DECISION_PENDING", null).andExpect(status().isForbidden());
+        session = signIn("gerencia", GERENCIA_TOKEN);
+        move(REVIEWER, "DISCARDED", "sin solvencia").andExpect(status().isOk());
+        JsonNode history = body(call("GET", "/api/tenders/" + tenderId + "/stages", ANALYST, null, null));
+        assertThat(history.get(0).get("person").asText()).isEqualTo("estudios");
+        assertThat(history.get(1).get("person").asText()).isEqualTo("gerencia");
     }
 }

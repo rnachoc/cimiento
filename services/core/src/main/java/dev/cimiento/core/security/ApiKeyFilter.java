@@ -7,20 +7,29 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import dev.cimiento.core.service.SessionService;
+import jakarta.servlet.http.Cookie;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Resolves the caller role from the X-Api-Key header and applies the access policy to /api. */
+/**
+ * Resolves the caller role from the X-Api-Key header and applies the access policy to /api. For
+ * REVIEWER calls (the console) it also resolves the signed-in person from the session cookie.
+ */
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Api-Key";
     public static final String ROLE_ATTRIBUTE = "cimiento.role";
+    public static final String ACTOR_ATTRIBUTE = "cimiento.actor";
+    public static final String SESSION_COOKIE = "cimiento_session";
 
     private final Map<Role, byte[]> keys;
+    private final SessionService sessions;
 
-    public ApiKeyFilter(ApiKeyProperties props) {
+    public ApiKeyFilter(ApiKeyProperties props, SessionService sessions) {
+        this.sessions = sessions;
         this.keys = Map.of(
                 Role.AGENT, props.agent().getBytes(StandardCharsets.UTF_8),
                 Role.ANALYST, props.analyst().getBytes(StandardCharsets.UTF_8),
@@ -47,7 +56,27 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
         request.setAttribute(ROLE_ATTRIBUTE, role);
+        Actor actor = Actor.of(role);
+        if (role == Role.REVIEWER) {
+            String sid = sessionId(request);
+            if (sid != null) {
+                actor = sessions.resolve(sid).map(SessionService::actor).orElse(actor);
+            }
+        }
+        request.setAttribute(ACTOR_ATTRIBUTE, actor);
         chain.doFilter(request, response);
+    }
+
+    public static String sessionId(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (Cookie c : request.getCookies()) {
+            if (SESSION_COOKIE.equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
     }
 
     private Role resolve(byte[] given) {

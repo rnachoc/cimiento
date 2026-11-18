@@ -20,6 +20,8 @@ public final class AccessPolicy {
             new Rule("POST", Pattern.compile("/api/proposals"), Set.of(Role.AGENT)),
             new Rule("POST", Pattern.compile("/api/proposals/\\d+/decision"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/projects"), Set.of(Role.REVIEWER)),
+            new Rule("POST", Pattern.compile("/api/session"), Set.of(Role.REVIEWER)),
+            new Rule("DELETE", Pattern.compile("/api/session"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders"), Set.of(Role.AGENT, Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/stage"), Set.of(Role.REVIEWER)));
 

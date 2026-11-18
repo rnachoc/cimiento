@@ -1,10 +1,10 @@
 package dev.cimiento.core.repository;
 
 import dev.cimiento.core.domain.Decision;
-import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DecisionRepository extends JpaRepository<Decision, Long> {
 
-    Optional<Decision> findByProposalId(Long proposalId);
+    List<Decision> findByProposalIdOrderById(Long proposalId);
 }

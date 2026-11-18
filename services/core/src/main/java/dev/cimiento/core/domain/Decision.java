@@ -33,14 +33,18 @@ public class Decision {
     @Column(name = "corrected_payload")
     private String correctedPayload;
 
+    @Column
+    private String person;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
     protected Decision() {
     }
 
-    public Decision(Long proposalId, Outcome outcome, String comment, String correctedPayload) {
+    public Decision(Long proposalId, Outcome outcome, String comment, String correctedPayload, String person) {
         this.proposalId = proposalId;
+        this.person = person;
         this.outcome = outcome;
         this.comment = comment;
         this.correctedPayload = correctedPayload;
@@ -60,6 +64,10 @@ public class Decision {
 
     public String getComment() {
         return comment;
+    }
+
+    public String getPerson() {
+        return person;
     }
 
     public Instant getCreatedAt() {

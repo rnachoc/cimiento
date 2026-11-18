@@ -12,6 +12,8 @@ import dev.cimiento.core.domain.Decision;
 import dev.cimiento.core.repository.OutboxRepository;
 import dev.cimiento.core.rules.Payloads.Citation;
 import dev.cimiento.core.rules.ProposalType;
+import dev.cimiento.core.rules.PersonRole;
+import dev.cimiento.core.security.Actor;
 import dev.cimiento.core.security.Role;
 import dev.cimiento.core.service.OutboxPublisher;
 import dev.cimiento.core.service.ProjectService;
@@ -105,7 +107,7 @@ class OutboxKafkaTest {
                 + "\"links\":[]}");
         var p = proposals.submit(Role.AGENT, UUID.randomUUID().toString(), tender.getId(), ProposalType.SCHEDULE,
                 payload, List.of(new Citation("mediciones", 1, "MT01 | Excavación en zanjas")), List.of()).proposal();
-        proposals.decide(Role.REVIEWER, p.getId(), Decision.Outcome.APPROVE, "ok", null);
+        proposals.decide(new Actor(Role.REVIEWER, "jefe.obra", PersonRole.SITE_MANAGER), p.getId(), Decision.Outcome.APPROVE, "ok", null);
         waitUntil(() -> outbox.countByPublishedAtIsNull() == 0);
         assertThat(outbox.countByPublishedAtIsNull()).isZero();
 

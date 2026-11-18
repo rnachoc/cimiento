@@ -8,6 +8,9 @@ ROOT="$(pwd)"
 [ -f .env ] || cp .env.example .env
 rand() { printf '%s-%s' "$1" "$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"; }
 export CIMIENTO_AGENT_KEY="$(rand agent)" CIMIENTO_ANALYST_KEY="$(rand analyst)" CIMIENTO_REVIEWER_KEY="$(rand reviewer)"
+. "$ROOT/scripts/people.sh"
+eval "$(people_env)"
+export GERENCIA_TOKEN ESTUDIOS_TOKEN OBRA_TOKEN CIMIENTO_PEOPLE
 export POSTGRES_PORT="${FLOW_POSTGRES_PORT:-25432}" KAFKA_PORT="${FLOW_KAFKA_PORT:-29092}" CORE_PORT="${FLOW_CORE_PORT:-28080}"
 export CIMIENTO_OUTBOX_ENABLED=true
 export CORE_URL="http://localhost:${CORE_PORT}" KAFKA_BOOTSTRAP="localhost:${KAFKA_PORT}" DATA_ROOT="$ROOT/data/generated"

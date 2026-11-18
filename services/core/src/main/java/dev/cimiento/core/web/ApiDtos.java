@@ -37,7 +37,7 @@ public final class ApiDtos {
 
     public record StageChangeView(Long id, dev.cimiento.core.rules.TenderStage from,
                                   dev.cimiento.core.rules.TenderStage to, String note, String actorRole,
-                                  java.time.Instant at) {
+                                  String person, java.time.Instant at) {
     }
 
     public record SubmitProposal(@NotNull Long tenderId, @NotNull ProposalType type, @NotNull JsonNode payload,
@@ -47,7 +47,19 @@ public final class ApiDtos {
     public record ProposalView(Long id, Long tenderId, String tenderCode, ProposalType type, String status,
                                ProposalType.Route route, JsonNode payload, JsonNode executedPayload,
                                JsonNode citations, JsonNode signals, JsonNode ruleResults, JsonNode routingReasons,
-                               String createdBy, Instant createdAt, Instant decidedAt) {
+                               String createdBy, Instant createdAt, Instant decidedAt, JsonNode correctedPayload,
+                               String correctedBy, List<DecisionView> decisions) {
+    }
+
+    public record DecisionView(Decision.Outcome outcome, String person, Instant at) {
+    }
+
+    public record SessionRequest(@NotNull @jakarta.validation.constraints.Size(max = 40) String username,
+                                 @NotNull @jakarta.validation.constraints.Size(max = 200) String token) {
+    }
+
+    public record PersonView(String username, String displayName, dev.cimiento.core.rules.PersonRole role,
+                             java.util.Set<ProposalType> scope) {
     }
 
     public record DecisionRequest(@NotNull Decision.Outcome outcome, String comment, JsonNode correctedPayload) {
@@ -68,7 +80,7 @@ public final class ApiDtos {
     public record ProgressView(int week, String activity, int plannedPct, int actualPct) {
     }
 
-    public record AuditView(Long seq, Instant createdAt, String actorRole, String action, String entityType,
+    public record AuditView(Long seq, Instant createdAt, String actorRole, String actorPerson, String action, String entityType,
                             String entityId, JsonNode details, String prevHash, String hash) {
     }
 

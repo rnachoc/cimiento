@@ -37,13 +37,18 @@ public class TenderStageChange {
     @Column(name = "actor_role", nullable = false)
     private String actorRole;
 
+    @Column
+    private String person;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
     protected TenderStageChange() {
     }
 
-    public TenderStageChange(Long tenderId, TenderStage fromStage, TenderStage toStage, String note, String actorRole) {
+    public TenderStageChange(Long tenderId, TenderStage fromStage, TenderStage toStage, String note, String actorRole,
+                             String person) {
+        this.person = person;
         this.tenderId = tenderId;
         this.fromStage = fromStage;
         this.toStage = toStage;
@@ -73,6 +78,10 @@ public class TenderStageChange {
 
     public String getActorRole() {
         return actorRole;
+    }
+
+    public String getPerson() {
+        return person;
     }
 
     public Instant getCreatedAt() {

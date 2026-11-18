@@ -4,6 +4,7 @@ import dev.cimiento.core.domain.AuditEntry;
 import dev.cimiento.core.domain.OutboxEvent;
 import dev.cimiento.core.repository.AuditRepository;
 import dev.cimiento.core.repository.OutboxRepository;
+import dev.cimiento.core.security.Actor;
 import dev.cimiento.core.security.Role;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
@@ -49,6 +50,12 @@ public class AuditService {
     @Transactional(propagation = Propagation.MANDATORY)
     public AuditEntry append(Role actor, String action, String entityType, Object entityId, Map<String, ?> details,
                              String key) {
+        return append(Actor.of(actor), action, entityType, entityId, details, key);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public AuditEntry append(Actor actor, String action, String entityType, Object entityId, Map<String, ?> details,
+                             String key) {
         // pg_advisory_xact_lock returns void; wrap it so the query yields a plain integer
         entityManager.createNativeQuery("SELECT 1 FROM (SELECT pg_advisory_xact_lock(:k)) AS l")
                 .setParameter("k", CHAIN_LOCK).getSingleResult();
@@ -56,13 +63,16 @@ public class AuditService {
         Instant at = Instant.now().truncatedTo(ChronoUnit.MICROS);
         String detailsJson = json.write(details);
         String id = String.valueOf(entityId);
-        String hash = hash(prev, at, actor.name(), action, entityType, id, detailsJson);
-        AuditEntry saved = repository.save(new AuditEntry(at, actor.name(), action, entityType, id, detailsJson, prev,
-                hash));
+        String hash = hash(prev, at, actor.audit(), action, entityType, id, detailsJson);
+        AuditEntry saved = repository.save(new AuditEntry(at, actor.role().name(), actor.person(), action, entityType,
+                id, detailsJson, prev, hash));
         Map<String, Object> event = new java.util.LinkedHashMap<>();
         event.put("seq", saved.getSeq());
         event.put("action", action);
-        event.put("actor", actor.name());
+        event.put("actor", actor.role().name());
+        if (actor.person() != null) {
+            event.put("person", actor.person());
+        }
         event.put("entityType", entityType);
         event.put("entityId", id);
         event.put("key", key);
@@ -81,7 +91,7 @@ public class AuditService {
             if (!e.getPrevHash().equals(prev)) {
                 return new Verification(false, entries.size(), e.getSeq(), "previous hash does not match");
             }
-            String expected = hash(prev, e.getCreatedAt(), e.getActorRole(), e.getAction(), e.getEntityType(),
+            String expected = hash(prev, e.getCreatedAt(), e.getActorForHash(), e.getAction(), e.getEntityType(),
                     e.getEntityId(), e.getDetails());
             if (!expected.equals(e.getHash())) {
                 return new Verification(false, entries.size(), e.getSeq(), "hash does not match its content");

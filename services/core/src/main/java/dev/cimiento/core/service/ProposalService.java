@@ -19,6 +19,7 @@ import dev.cimiento.core.repository.ScheduleActivityRepository;
 import dev.cimiento.core.repository.ScheduleLinkRepository;
 import dev.cimiento.core.repository.ScheduleRepository;
 import dev.cimiento.core.repository.TenderRepository;
+import dev.cimiento.core.rules.Authority;
 import dev.cimiento.core.rules.Cpm;
 import dev.cimiento.core.rules.Payloads;
 import dev.cimiento.core.rules.Payloads.Citation;
@@ -28,6 +29,7 @@ import dev.cimiento.core.rules.RuleEngine;
 import dev.cimiento.core.rules.RuleEngine.Evaluation;
 import dev.cimiento.core.rules.RuleResult;
 import dev.cimiento.core.rules.WorkCalendar;
+import dev.cimiento.core.security.Actor;
 import dev.cimiento.core.security.Role;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,14 +118,22 @@ public class ProposalService {
         idempotency.save(new IdempotencyRecord(actor.name(), idempotencyKey, requestHash, p.getId()));
         audit.append(actor, "PROPOSAL_SUBMITTED", "proposal", p.getId(), summary(p, eval), key(p));
         if (status == ProposalStatus.EXECUTED) {
-            execute(p, payload, eval, Role.SYSTEM);
+            execute(p, payload, eval, Actor.of(Role.SYSTEM));
         }
         return new Submitted(p, false);
     }
 
+    /**
+     * A person decides. The core checks who may decide this proposal (rules/Authority), runs the
+     * rules again on what would be executed, and applies four eyes: CORRECT stores the correction
+     * and leaves the proposal pending until a different person approves (or rejects) it.
+     */
     @Transactional
-    public Proposal decide(Role actor, Long proposalId, Decision.Outcome outcome, String comment,
+    public Proposal decide(Actor actor, Long proposalId, Decision.Outcome outcome, String comment,
                            JsonNode correctedPayload) {
+        if (actor.person() == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "sign in as a person to decide");
+        }
         Proposal p = proposal(proposalId);
         if (p.getStatus() != ProposalStatus.PENDING_REVIEW) {
             throw new ApiException(HttpStatus.CONFLICT, "proposal " + proposalId + " is " + p.getStatus()
@@ -132,22 +142,35 @@ public class ProposalService {
         if (outcome != Decision.Outcome.CORRECT && correctedPayload != null && !correctedPayload.isNull()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "correctedPayload is only allowed with CORRECT");
         }
-        JsonNode payload = json.read(p.getPayload());
+        boolean corrected = p.getCorrectedBy() != null;
+        if (corrected && outcome == Decision.Outcome.CORRECT) {
+            throw new ApiException(HttpStatus.CONFLICT, "proposal " + proposalId
+                    + " already has a correction waiting for a second approval");
+        }
+        List<Authority.Broken> broken = Authority.checkDecision(actor.personRole(), actor.person(), p.getType(),
+                reasons(p), outcome == Decision.Outcome.APPROVE ? p.getCorrectedBy() : null);
+        if (!broken.isEmpty()) {
+            boolean segregation = broken.stream().anyMatch(b -> b.rule().equals(Authority.SEGREGATION));
+            throw new ApiException(segregation ? HttpStatus.CONFLICT : HttpStatus.FORBIDDEN,
+                    "decision not allowed for " + actor.person(), broken);
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("outcome", outcome.name());
+        details.put("type", p.getType().name());
+        if (outcome == Decision.Outcome.REJECT) {
+            decisions.save(new Decision(p.getId(), outcome, comment, null, actor.person()));
+            p.markRejected();
+            audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
+            return p;
+        }
+        JsonNode payload;
         if (outcome == Decision.Outcome.CORRECT) {
             if (correctedPayload == null || correctedPayload.isNull()) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "CORRECT requires correctedPayload");
             }
             payload = correctedPayload;
-        }
-        decisions.save(new Decision(p.getId(), outcome, comment,
-                outcome == Decision.Outcome.CORRECT ? json.write(correctedPayload) : null));
-        Map<String, Object> details = new LinkedHashMap<>();
-        details.put("outcome", outcome.name());
-        details.put("type", p.getType().name());
-        if (outcome == Decision.Outcome.REJECT) {
-            p.markRejected();
-            audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
-            return p;
+        } else {
+            payload = json.read(corrected ? p.getCorrectedPayload() : p.getPayload());
         }
         // Rules run again on what will actually be executed (the corrected payload, if any).
         Evaluation eval = evaluate(p.getTender(), p.getType(), payload, citations(p), signals(p));
@@ -155,9 +178,26 @@ public class ProposalService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "rules fail on the payload to execute",
                     failures(eval));
         }
+        if (outcome == Decision.Outcome.CORRECT) {
+            String written = json.write(correctedPayload);
+            decisions.save(new Decision(p.getId(), outcome, comment, written, actor.person()));
+            p.recordCorrection(written, actor.person());
+            details.put("awaitingSecondApproval", true);
+            audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
+            return p;
+        }
+        decisions.save(new Decision(p.getId(), outcome, comment, null, actor.person()));
+        if (corrected) {
+            details.put("secondApproval", true);
+        }
         audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
         execute(p, payload, eval, actor);
         return p;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Decision> decisions(Long proposalId) {
+        return decisions.findByProposalIdOrderById(proposalId);
     }
 
     @Transactional(readOnly = true)
@@ -182,7 +222,7 @@ public class ProposalService {
                 new RuleEngine.TenderContext(tender.getPlannedStart(), tender.getContractTermMonths()));
     }
 
-    private void execute(Proposal p, JsonNode payload, Evaluation eval, Role actor) {
+    private void execute(Proposal p, JsonNode payload, Evaluation eval, Actor actor) {
         Tender tender = p.getTender();
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", p.getType().name());
@@ -232,6 +272,11 @@ public class ProposalService {
 
     private List<Citation> citations(Proposal p) {
         return List.of(mapper.convertValue(json.read(p.getCitations()), Citation[].class));
+    }
+
+    private List<String> reasons(Proposal p) {
+        return p.getRoutingReasons() == null ? List.of()
+                : List.of(mapper.convertValue(json.read(p.getRoutingReasons()), String[].class));
     }
 
     private List<String> signals(Proposal p) {

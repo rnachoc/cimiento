@@ -67,6 +67,13 @@ public class Proposal {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "corrected_payload")
+    private String correctedPayload;
+
+    @Column(name = "corrected_by")
+    private String correctedBy;
+
     @Column(name = "decided_at")
     private Instant decidedAt;
 
@@ -95,6 +102,20 @@ public class Proposal {
         this.status = ProposalStatus.EXECUTED;
         this.executedPayload = executedPayload;
         this.decidedAt = Instant.now();
+    }
+
+    /** A person corrected the payload; it now waits for a second person (four eyes). */
+    public void recordCorrection(String correctedPayload, String correctedBy) {
+        this.correctedPayload = correctedPayload;
+        this.correctedBy = correctedBy;
+    }
+
+    public String getCorrectedPayload() {
+        return correctedPayload;
+    }
+
+    public String getCorrectedBy() {
+        return correctedBy;
     }
 
     public void markRejected() {
