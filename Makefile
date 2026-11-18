@@ -76,8 +76,15 @@ data: ## Generate both splits (dev 42, eval 1337); or SPLIT=dev|eval and/or SEED
 	done
 
 .PHONY: demo
-demo: ## Keyless end-to-end demo (phase 12)
-	@echo "Not implemented yet: arrives in phase 12." && exit 1
+demo: ## Keyless end-to-end demo: data, core, console, agents; open the printed console URL
+	./scripts/demo.sh
+
+.PHONY: demo-down
+demo-down: ## Stop the demo containers and remove their data
+	@[ -f .env ] || cp .env.example .env; set -a; if [ -f .demo-keys ]; then . ./.demo-keys; fi; set +a; \
+	export CIMIENTO_AGENT_KEY=$${CIMIENTO_AGENT_KEY:-unused-a} CIMIENTO_ANALYST_KEY=$${CIMIENTO_ANALYST_KEY:-unused-b} \
+	  CIMIENTO_REVIEWER_KEY=$${CIMIENTO_REVIEWER_KEY:-unused-c}; \
+	docker compose -p cimiento-demo -f deploy/docker-compose.yml --env-file .env --profile app down -v --remove-orphans
 
 .PHONY: eval
 eval: eval-retrieval eval-bid eval-plan eval-site ## Run every eval implemented so far

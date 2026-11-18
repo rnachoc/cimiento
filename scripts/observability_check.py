@@ -10,13 +10,12 @@ import time
 from pathlib import Path
 
 import httpx
-from opentelemetry import metrics, trace
-
 from cimiento_agents import tracing
 from cimiento_agents.coordinator import analyse_tender
 from cimiento_agents.core_client import RecordingCore
 from cimiento_agents.llm import FakeModel
 from cimiento_agents.tender_agents import load_rates
+from opentelemetry import metrics, trace
 
 PROM, JAEGER, GRAFANA = os.environ["PROM_URL"], os.environ["JAEGER_URL"], os.environ["GRAFANA_URL"]
 DASHBOARD = Path(os.environ["DASHBOARD_JSON"])
@@ -43,7 +42,9 @@ def main() -> None:
         expr = panel["targets"][0]["expr"]
         result = []
         for _ in range(30):
-            result = httpx.get(f"{PROM}/api/v1/query", params={"query": expr}).json()["data"]["result"]
+            result = httpx.get(f"{PROM}/api/v1/query", params={"query": expr}).json()["data"][
+                "result"
+            ]
             if result:
                 break
             time.sleep(2)
@@ -56,15 +57,22 @@ def main() -> None:
             break
         time.sleep(2)
     check("cimiento-agents" in services, "Jaeger received traces from cimiento-agents")
-    traces = httpx.get(f"{JAEGER}/api/traces", params={"service": "cimiento-agents",
-                                                        "operation": "cimiento.tender", "limit": 10}).json()["data"]
+    traces = httpx.get(
+        f"{JAEGER}/api/traces",
+        params={"service": "cimiento-agents", "operation": "cimiento.tender", "limit": 10},
+    ).json()["data"]
     check(len(traces) >= 3, f"one trace per tender in Jaeger ({len(traces)})")
     ops = {s["operationName"] for s in traces[0]["spans"]}
-    check({"agent.bid_analyst", "agent.planner", "chat rule-based", "POST /api/proposals"} <= ops,
-          "a tender trace holds agent, model and core spans")
+    check(
+        {"agent.bid_analyst", "agent.planner", "chat rule-based", "POST /api/proposals"} <= ops,
+        "a tender trace holds agent, model and core spans",
+    )
 
     found = httpx.get(f"{GRAFANA}/api/search", params={"query": "Cimiento"}).json()
-    check(any(d.get("uid") == "cimiento-agents" for d in found), "Grafana provisioned the Cimiento dashboard")
+    check(
+        any(d.get("uid") == "cimiento-agents" for d in found),
+        "Grafana provisioned the Cimiento dashboard",
+    )
     print("observability ok")
 
 

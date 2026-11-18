@@ -18,10 +18,15 @@ import sys
 import uuid
 
 import httpx
-
 from cimiento_agents.core_client import CoreClient
 from cimiento_agents.events import (
-    AUDIT, INTAKE, IntakeBridge, KafkaProducer, consume, read_all, replay,
+    AUDIT,
+    INTAKE,
+    IntakeBridge,
+    KafkaProducer,
+    consume,
+    read_all,
+    replay,
 )
 from cimiento_agents.llm import FakeModel
 
@@ -40,9 +45,13 @@ def check(cond: bool, what: str) -> None:
 def main() -> None:
     from pathlib import Path
 
-    reviewer = httpx.Client(base_url=CORE, headers={"X-Api-Key": os.environ["CIMIENTO_REVIEWER_KEY"]})
+    reviewer = httpx.Client(
+        base_url=CORE, headers={"X-Api-Key": os.environ["CIMIENTO_REVIEWER_KEY"]}
+    )
     analyst = httpx.Client(base_url=CORE, headers={"X-Api-Key": os.environ["CIMIENTO_ANALYST_KEY"]})
-    reviewer.post("/api/projects", json={"code": PROJECT, "name": "Licitaciones"}).raise_for_status()
+    reviewer.post(
+        "/api/projects", json={"code": PROJECT, "name": "Licitaciones"}
+    ).raise_for_status()
 
     producer = KafkaProducer(BOOT)
     core = CoreClient(CORE, os.environ["CIMIENTO_AGENT_KEY"])
@@ -59,42 +68,78 @@ def main() -> None:
 
     # 2. audit events through the outbox
     bid = next(p for p in proposals if p["type"] == "BID_ANALYSIS")
-    reviewer.post(f"/api/proposals/{bid['id']}/decision", json={"outcome": "APPROVE", "comment": "ok"}).raise_for_status()
+    reviewer.post(
+        f"/api/proposals/{bid['id']}/decision", json={"outcome": "APPROVE", "comment": "ok"}
+    ).raise_for_status()
 
     # 3. the decision arrives through Kafka
     events = []
     for _ in range(10):
-        events = [json.loads(m.value) | {"_key": m.key} for m in read_all(BOOT, AUDIT, idle_timeout=4)]
-        if any(e["action"] == "PROPOSAL_EXECUTED" and e["entityId"] == str(bid["id"]) for e in events):
+        events = [
+            json.loads(m.value) | {"_key": m.key} for m in read_all(BOOT, AUDIT, idle_timeout=4)
+        ]
+        if any(
+            e["action"] == "PROPOSAL_EXECUTED" and e["entityId"] == str(bid["id"]) for e in events
+        ):
             break
     actions = [e["action"] for e in events]
-    check("TENDER_CREATED" in actions and actions.count("PROPOSAL_SUBMITTED") == len(proposals),
-          f"audit events on {AUDIT}: {len(events)}")
+    check(
+        "TENDER_CREATED" in actions and actions.count("PROPOSAL_SUBMITTED") == len(proposals),
+        f"audit events on {AUDIT}: {len(events)}",
+    )
     check(all(e["_key"] == PROJECT for e in events), "every event keyed by project")
     seqs = [e["seq"] for e in events]
     check(seqs == sorted(seqs), "events of the project in audit order")
-    check(any(e["action"] == "DECISION_RECORDED" and e["entityId"] == str(bid["id"]) for e in events)
-          and any(e["action"] == "PROPOSAL_EXECUTED" and e["entityId"] == str(bid["id"]) for e in events),
-          "flow ends in a decision: DECISION_RECORDED and PROPOSAL_EXECUTED for the approved proposal")
+    check(
+        any(e["action"] == "DECISION_RECORDED" and e["entityId"] == str(bid["id"]) for e in events)
+        and any(
+            e["action"] == "PROPOSAL_EXECUTED" and e["entityId"] == str(bid["id"]) for e in events
+        ),
+        "flow ends in a decision: DECISION_RECORDED and PROPOSAL_EXECUTED for the approved proposal",
+    )
     raw = json.dumps(events, ensure_ascii=False)
-    check("Excavación" not in raw and "plazo de ejecución" not in raw.lower(), "no document text in events")
+    check(
+        "Excavación" not in raw and "plazo de ejecución" not in raw.lower(),
+        "no document text in events",
+    )
 
     # 4. a bad intake event is dead-lettered and can be replayed
-    producer.send(INTAKE, PROJECT, json.dumps({"split": "dev", "tender": "D-999", "planned_start": "2027-01-04"}).encode(), {})
-    out = consume(BOOT, group, INTAKE, bridge, producer, max_messages=1, idle_timeout=30, base_delay=0.2)
-    check(out and out[0].dead_lettered and out[0].attempts == 3, "bad event retried 3 times then dead-lettered")
+    producer.send(
+        INTAKE,
+        PROJECT,
+        json.dumps({"split": "dev", "tender": "D-999", "planned_start": "2027-01-04"}).encode(),
+        {},
+    )
+    out = consume(
+        BOOT, group, INTAKE, bridge, producer, max_messages=1, idle_timeout=30, base_delay=0.2
+    )
+    check(
+        out and out[0].dead_lettered and out[0].attempts == 3,
+        "bad event retried 3 times then dead-lettered",
+    )
     dlq = read_all(BOOT, f"{INTAKE}.dlq")
-    check(len(dlq) == 1 and "not found" in (dlq[0].headers or {}).get("error", ""), "dead letter carries the error")
+    check(
+        len(dlq) == 1 and "not found" in (dlq[0].headers or {}).get("error", ""),
+        "dead letter carries the error",
+    )
     check(replay(dlq, producer) == 1, "replayed from the dead-letter topic")
-    out = consume(BOOT, group, INTAKE, bridge, producer, max_messages=1, idle_timeout=30, base_delay=0.2)
-    check(out and out[0].dead_lettered, "replayed event processed again (and fails again, reproducibly)")
+    out = consume(
+        BOOT, group, INTAKE, bridge, producer, max_messages=1, idle_timeout=30, base_delay=0.2
+    )
+    check(
+        out and out[0].dead_lettered,
+        "replayed event processed again (and fails again, reproducibly)",
+    )
 
     # 5. idempotency: the good intake again creates nothing new
     before = len(analyst.get("/api/proposals").json())
     producer.send(INTAKE, PROJECT, good, {})
     out = consume(BOOT, group, INTAKE, bridge, producer, max_messages=1, idle_timeout=30)
     after = len(analyst.get("/api/proposals").json())
-    check(out[0].handled and after == before, f"redelivered intake is idempotent ({before} -> {after} proposals)")
+    check(
+        out[0].handled and after == before,
+        f"redelivered intake is idempotent ({before} -> {after} proposals)",
+    )
     print("flow ok")
 
 
