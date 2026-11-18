@@ -27,7 +27,22 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--data", type=Path, default=Path("data/generated"))
     pl.add_argument("--out", type=Path, default=Path("evals/reports"))
     pl.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
+    st = sub.add_parser("site", help="site progress: planted delays, alarms, reports")
+    st.add_argument("--data", type=Path, default=Path("data/generated"))
+    st.add_argument("--out", type=Path, default=Path("evals/reports"))
+    st.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
     args = parser.parse_args(argv)
+
+    if args.cmd == "site":
+        from cimiento_agents.llm import FakeModel, Recordings, model_from_env
+
+        from .site import evaluate as evaluate_site
+
+        model = model_from_env(Recordings(args.recordings) if args.recordings.exists() else None)
+        label = "keyless baseline (rule-based)" if isinstance(model, FakeModel) else "Claude"
+        evaluate_site(args.data, model, args.out, label)
+        print((args.out / "site.md").read_text(encoding="utf-8"))
+        return 0
 
     if args.cmd == "plan":
         from cimiento_agents.llm import FakeModel, Recordings, model_from_env

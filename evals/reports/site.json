@@ -1,0 +1,36 @@
+{
+  "dev": {
+    "alarm_rows": 185,
+    "alarms_agree": 185,
+    "date": "2026-11-18",
+    "delay_exact": 34,
+    "delay_lower_bound_only": 6,
+    "delay_measurable": 34,
+    "detected": 40,
+    "false_delay_flags": 0,
+    "impact_exact": 28,
+    "planted_delays": 40,
+    "rfis": 6,
+    "site_reports": 90,
+    "split": "dev",
+    "tenders": 30,
+    "unsupported_claims": 0
+  },
+  "eval": {
+    "alarm_rows": 184,
+    "alarms_agree": 182,
+    "date": "2026-11-18",
+    "delay_exact": 32,
+    "delay_lower_bound_only": 10,
+    "delay_measurable": 32,
+    "detected": 42,
+    "false_delay_flags": 0,
+    "impact_exact": 26,
+    "planted_delays": 42,
+    "rfis": 30,
+    "site_reports": 90,
+    "split": "eval",
+    "tenders": 30,
+    "unsupported_claims": 0
+  }
+}

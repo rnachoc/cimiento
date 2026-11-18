@@ -65,12 +65,16 @@ demo: ## Keyless end-to-end demo (phase 12)
 	@echo "Not implemented yet: arrives in phase 12." && exit 1
 
 .PHONY: eval
-eval: eval-retrieval eval-bid eval-plan ## Run every eval implemented so far
+eval: eval-retrieval eval-bid eval-plan eval-site ## Run every eval implemented so far
 
 # Keyless by default (rule-based reader, labelled as such). With ANTHROPIC_API_KEY it uses Claude.
 .PHONY: eval-bid
 eval-bid: data-if-missing ## Bid analyst: fields, citations, planted instructions; writes evals/reports/bid.md
 	cd evals && uv run cimiento-evals bid --data ../data/generated --out reports --recordings recordings
+
+.PHONY: eval-site
+eval-site: data-if-missing ## Site progress: planted delays, alarms, reports; writes evals/reports/site.md
+	cd evals && uv run cimiento-evals site --data ../data/generated --out reports --recordings recordings
 
 .PHONY: eval-plan
 eval-plan: data-if-missing ## Planner: valid schedules, duration error, critical path; writes evals/reports/plan.md
