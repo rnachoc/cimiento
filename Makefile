@@ -5,9 +5,20 @@ COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
 MAVEN_IMAGE := maven:3.9.11-eclipse-temurin-17
 export UV_LINK_MODE ?= copy
 
-# Use the local JDK when present; otherwise build the core inside a JDK 17 container.
+# CORE_JDK=auto uses the local JDK when present, otherwise a JDK 17 container.
+# CORE_JDK=docker forces the container. The container runs as the host user so
+# build output is not owned by root; its Maven cache lives in services/core/.m2repo.
+CORE_JDK ?= auto
+ifeq ($(CORE_JDK),auto)
 ifeq ($(shell command -v java 2>/dev/null),)
-CORE_MVN := docker run --rm -v "$(CURDIR)/services/core:/w" -v cimiento-m2:/root/.m2 -w /w $(MAVEN_IMAGE) ./mvnw
+CORE_JDK := docker
+else
+CORE_JDK := local
+endif
+endif
+ifeq ($(CORE_JDK),docker)
+CORE_MVN := docker run --rm --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e MAVEN_USER_HOME=/w/.m2repo \
+	-v "$(CURDIR)/services/core:/w" -w /w $(MAVEN_IMAGE) ./mvnw -Dmaven.repo.local=/w/.m2repo/repository
 else
 CORE_MVN := cd services/core && ./mvnw
 endif

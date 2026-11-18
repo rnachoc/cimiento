@@ -18,6 +18,7 @@ __pycache__/
 target/
 *.class
 .mvn/wrapper/maven-wrapper.jar
+.m2repo/
 
 # Node
 node_modules/
