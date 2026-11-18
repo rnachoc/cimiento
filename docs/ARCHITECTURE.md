@@ -124,7 +124,7 @@ A detected planted instruction always forces review. The table lives in `Proposa
 
 ## Bid pipeline
 
-Every tender has a stage. Moves are checked by `rules/Pipeline.java` and made only by a REVIEWER:
+Every tender has a stage. Moves are checked by `rules/Pipeline.java` and made only by a signed-in person with authority for the move (ADR 0013):
 
 ```mermaid
 stateDiagram-v2
@@ -162,10 +162,11 @@ stateDiagram-v2
 
 ## Security
 
-- **Roles by key**: AGENT can register tenders and submit proposals; ANALYST only reads; REVIEWER decides and moves tenders through the pipeline. Keys come from the environment; the core refuses to start with the placeholder values.
+- **Roles by key**: AGENT can register tenders and submit proposals; ANALYST only reads; REVIEWER is the console. Keys come from the environment; the core refuses to start with the placeholder values.
+- **People decide** (ADR 0013): decisions and stage moves need a person signed in with a personal token (HttpOnly session cookie, hashes only in the database). `rules/Authority.java` limits each role (estimating, site manager, management), reserves amounts over the threshold and the bid / no-bid moves to management, and applies four eyes: whoever corrects a proposal cannot approve it. The audit chain records the person.
 - **Document text is data.** The eval split plants instructions in documents. The detector reports them and the proposal goes to a person. Obedience is measured with twin tenders (same tender with and without the instruction). The detector's patterns are built from the dev split only.
 - **No document text in telemetry.** Span and log attributes accept identifiers, counts and timings; a test checks every attribute of every eval tender, and `make cost-report` fails if a span matches document text.
-- **The console never holds a key.** nginx adds the REVIEWER key server side and sets a strict Content-Security-Policy with a nonce per request.
+- **The console never holds a key.** nginx adds the REVIEWER key server side; the person's session travels only in an HttpOnly cookie and sets a strict Content-Security-Policy with a nonce per request.
 - **Secrets**: `.env` is git-ignored, `.env.example` holds placeholders, gitleaks runs in pre-commit and on the full history in CI.
 
 ## Search
@@ -198,3 +199,4 @@ One trace per tender (`cimiento.tender`) with a span per agent, per model call (
 | [0010](decisions/0010-events.md) | Events through Kafka |
 | [0011](decisions/0011-observability-and-cost.md) | Observability and cost |
 | [0012](decisions/0012-pipeline-and-exports.md) | Bid pipeline and file exports |
+| [0013](decisions/0013-people-and-segregation.md) | People, roles and segregation of duties |

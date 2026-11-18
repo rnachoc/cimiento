@@ -11,12 +11,14 @@ Relevant reports include:
 - Ways for an agent or a document to bypass the core rules or human review.
 - Prompt injection through document text that changes agent output or triggers actions.
 - Role key bypass (an AGENT key approving, an ANALYST key writing).
+- One person approving their own correction, or deciding outside their role.
 - Document text leaking into telemetry or logs.
 
 ## Practices
 - No secrets in code; gitleaks runs in pre-commit and CI over the full history.
 - Document text is treated as data, never as instructions.
 - Role-based keys per service; the browser never holds credentials.
+- People decide, not keys: personal tokens are stored as SHA-256 hashes, the session id travels in an HttpOnly SameSite=Strict cookie, and the core enforces who may decide what, management-only amounts and four eyes on corrections (ADR 0013).
 - The core refuses to start while role keys hold the `.env.example` placeholders; `make demo` generates random keys into a git-ignored file.
 - Anthropic API keys are never stored in the repository. Each user puts their own key in a local, git-ignored `.env`; without one everything runs keyless. Never paste a key into an issue, a log or a recording.
 

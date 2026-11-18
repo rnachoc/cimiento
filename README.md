@@ -61,7 +61,7 @@ make demo        # data, core, console and agents in Docker; first run builds th
 make demo-down   # stop everything and remove the demo data
 ```
 
-`make demo` generates the synthetic tenders, starts Postgres, the core and the review console, runs the agents on six eval tenders without a model (keyless baseline) and prints the console URL (`http://localhost:38088`). The proposals wait there for a person.
+`make demo` generates the synthetic tenders, starts Postgres, the core and the review console, runs the agents on six eval tenders without a model (keyless baseline) and prints the console URL (`http://localhost:38088`) with three fictional people to sign in as (management, estimating and site manager; their tokens stay in the git-ignored `.demo-keys`). The proposals wait there for a person.
 
 For development (JDK 17+ and Node 24 as well):
 
@@ -83,7 +83,7 @@ One trace per tender with a span per agent, per model call (GenAI conventions: m
 Everything runs without any key: the agents then use the rule-based reader (keyless baseline) and cost nothing. To use Claude, put **your own** Anthropic API key in your local `.env` (`ANTHROPIC_API_KEY=...`, created at console.anthropic.com). Calls are billed to the account that owns that key. `.env` is git-ignored and never shared; no key is stored in this repository. Results of the author's real-model run are published as recorded answers, so you can replay them for free.
 
 ## Review console
-Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Cartera** view shows the bid pipeline by stage with deadline countdowns; schedules and budgets download as MS Project XML or BC3. The browser never holds a key (nginx adds the REVIEWER key) and a strict Content-Security-Policy applies.
+Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Cartera** view shows the bid pipeline by stage with deadline countdowns; schedules and budgets download as MS Project XML or BC3. Every decision is signed by a person (estimating, site manager or management): the core checks who may decide what, keeps amounts over the threshold for management, and makes a second person approve any correction. The browser never holds a key (nginx adds the REVIEWER key, the person travels in an HttpOnly session cookie) and a strict Content-Security-Policy applies.
 
 ![Inbox of the review console](docs/images/console-inbox.png)
 
@@ -213,6 +213,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 12 | Documentation, keyless demo, video script | done |
 | 13 | Bid pipeline and MS Project / BC3 exports | done |
 | 14 | Tender file, site progress view and management view | done |
+| 15 | People, roles and segregation of duties | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 
@@ -223,7 +224,7 @@ Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 - The rule-based reader was written against dev wording; it misses one of the three planted instructions on eval (it is still not obeyed).
 - If the contract term is not found, the tender is registered without it and every schedule goes to a person.
 - Search runs within one tender's documents (tens of chunks each), which is easier than searching a large archive.
-- Role keys identify a role, not a person: every decision is recorded as REVIEWER.
+- People sign in with long random personal tokens, not an identity provider: there is no password reset, lockout or single sign-on. Decisions made before phase 15 are recorded as REVIEWER without a person.
 - Local development is tested on WSL2 (Ubuntu) and CI on Ubuntu; native Windows `make` is not supported.
 
 ## License

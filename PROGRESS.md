@@ -215,5 +215,19 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Consola: Ficha de licitación (`/licitaciones/:id`), Seguimiento de obra con curva S en SVG propio (`/obra/:id`), Dirección (`/direccion`); enlaces desde la cartera y el detalle; navegación Bandeja/Cartera/Dirección.
 - Verificación: `SiteTest` contra la verdad terreno de las 66 obras (386 retrasos exactos, 400/402 alarmas, impacto exacto cuando no hay cotas inferiores), `MetricsTest`, 2 tests de integración, 6 de consola, e2e ampliado; revisión visual en escritorio y móvil sin errores de consola ni desbordamiento.
 
+## Fase 15: personas, roles y separación de funciones
+
+### Qué se hizo
+- Núcleo: V6 (`person`, `person_session`, persona en `decision`, `tender_stage_change` y `audit_entry`, corrección pendiente en `proposal`). Tokens personales y sesiones guardados solo como SHA-256; cookie HttpOnly, SameSite=Strict, 8 h (`POST/DELETE /api/session`, `GET /api/session/me`). Personas desde `CIMIENTO_PEOPLE` (solo hashes).
+- Reglas puras en `rules/Authority.java`: estudios (mediciones, presupuesto, análisis del pliego, memoria), jefatura de obra (planning, informes, avance, riesgos), gerencia (todo); importes sobre el umbral y paso a ofertar o descartar solo gerencia; cuatro ojos: `CORRECT` ya no ejecuta, deja la corrección pendiente y la aprueba otra persona (409 `SEGREGATION_OF_DUTIES` si lo intenta quien corrigió). Sin estado nuevo: sigue `PENDING_REVIEW`.
+- Auditoría: el hash usa `ROL/usuario` si hay persona y solo el rol si no, así las filas antiguas verifican igual.
+- Consola: pantalla de acceso, guard en todas las vistas, persona y rol en la cabecera, botones desactivados con el motivo, aviso de segunda aprobación, historial de decisiones con persona, cartera con movimientos reservados.
+- Demo, e2e y flow generan tres personas ficticias (`scripts/people.sh`); `make demo` imprime los tokens. ADR 0013.
+- Tests: `AuthorityTest` (4), `AuditHashTest` (2), 2 de integración nuevos y el de corrección ampliado, `session.spec.ts` (3) y 2 nuevos en el detalle; e2e en Chromium con corrección de jefatura de obra y aprobación de gerencia.
+
+### Deuda conocida
+- Sin proveedor de identidad (OIDC/SAML), sin bloqueo por intentos fallidos ni recuperación de token.
+- La demo va por HTTP en localhost, así que la cookie no lleva `Secure` (sí detrás de HTTPS).
+
 ## Siguiente paso
-Decisión del autor: ejecución real con Claude y etiqueta v1.1.0 para la fase 13.
+Fase 16: calendario laboral en el CPM (revisar antes `rules/WorkCalendar.java`). Después: 17 modificados, 18 certificaciones, 19 revisión previa a la presentación. La ejecución real con Claude queda aparcada por decisión del autor.
