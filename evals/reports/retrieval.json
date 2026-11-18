@@ -1,0 +1,256 @@
+{
+  "chosen_method": "rerank",
+  "date": "2026-11-18",
+  "dev": {
+    "no_consta": {
+      "hybrid": {
+        "answerable_wrongly_flagged": "193/830",
+        "threshold": 0.03278688524590164,
+        "unanswerable_flagged": "56/90"
+      },
+      "lexical": {
+        "answerable_wrongly_flagged": "243/830",
+        "threshold": 7.67654550511223,
+        "unanswerable_flagged": "90/90"
+      },
+      "rerank": {
+        "answerable_wrongly_flagged": "57/830",
+        "threshold": -1.421169400215149,
+        "unanswerable_flagged": "90/90"
+      },
+      "vector": {
+        "answerable_wrongly_flagged": "403/830",
+        "threshold": 0.5832540988922119,
+        "unanswerable_flagged": "65/90"
+      }
+    },
+    "stats": {
+      "answerable_with_quote_in_a_chunk": "830/830",
+      "chunks_max": 37,
+      "chunks_mean": 33.2,
+      "chunks_min": 29,
+      "tenders": 30
+    },
+    "table": {
+      "hybrid": {
+        "all": {
+          "hit@1": 725,
+          "hit@5": 808,
+          "n": 830
+        },
+        "anexo": {
+          "hit@1": 30,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 335,
+          "hit@5": 402,
+          "n": 420
+        },
+        "medicion": {
+          "hit@1": 360,
+          "hit@5": 376,
+          "n": 380
+        }
+      },
+      "lexical": {
+        "all": {
+          "hit@1": 766,
+          "hit@5": 809,
+          "n": 830
+        },
+        "anexo": {
+          "hit@1": 30,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 357,
+          "hit@5": 399,
+          "n": 420
+        },
+        "medicion": {
+          "hit@1": 379,
+          "hit@5": 380,
+          "n": 380
+        }
+      },
+      "rerank": {
+        "all": {
+          "hit@1": 822,
+          "hit@5": 828,
+          "n": 830
+        },
+        "anexo": {
+          "hit@1": 30,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 412,
+          "hit@5": 418,
+          "n": 420
+        },
+        "medicion": {
+          "hit@1": 380,
+          "hit@5": 380,
+          "n": 380
+        }
+      },
+      "vector": {
+        "all": {
+          "hit@1": 659,
+          "hit@5": 797,
+          "n": 830
+        },
+        "anexo": {
+          "hit@1": 30,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 288,
+          "hit@5": 401,
+          "n": 420
+        },
+        "medicion": {
+          "hit@1": 341,
+          "hit@5": 366,
+          "n": 380
+        }
+      }
+    }
+  },
+  "embedder": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "eval": {
+    "no_consta": {
+      "hybrid": {
+        "answerable_wrongly_flagged": "275/770",
+        "threshold": 0.03278688524590164,
+        "unanswerable_flagged": "45/90"
+      },
+      "lexical": {
+        "answerable_wrongly_flagged": "334/770",
+        "threshold": 7.67654550511223,
+        "unanswerable_flagged": "90/90"
+      },
+      "rerank": {
+        "answerable_wrongly_flagged": "206/770",
+        "threshold": -1.421169400215149,
+        "unanswerable_flagged": "89/90"
+      },
+      "vector": {
+        "answerable_wrongly_flagged": "386/770",
+        "threshold": 0.5832540988922119,
+        "unanswerable_flagged": "66/90"
+      }
+    },
+    "stats": {
+      "answerable_with_quote_in_a_chunk": "770/770",
+      "chunks_max": 37,
+      "chunks_mean": 33.1,
+      "chunks_min": 29,
+      "tenders": 30
+    },
+    "table": {
+      "hybrid": {
+        "all": {
+          "hit@1": 542,
+          "hit@5": 642,
+          "n": 770
+        },
+        "anexo": {
+          "hit@1": 9,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 165,
+          "hit@5": 232,
+          "n": 360
+        },
+        "medicion": {
+          "hit@1": 368,
+          "hit@5": 380,
+          "n": 380
+        }
+      },
+      "lexical": {
+        "all": {
+          "hit@1": 523,
+          "hit@5": 580,
+          "n": 770
+        },
+        "anexo": {
+          "hit@1": 0,
+          "hit@5": 8,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 143,
+          "hit@5": 192,
+          "n": 360
+        },
+        "medicion": {
+          "hit@1": 380,
+          "hit@5": 380,
+          "n": 380
+        }
+      },
+      "rerank": {
+        "all": {
+          "hit@1": 653,
+          "hit@5": 700,
+          "n": 770
+        },
+        "anexo": {
+          "hit@1": 23,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 250,
+          "hit@5": 290,
+          "n": 360
+        },
+        "medicion": {
+          "hit@1": 380,
+          "hit@5": 380,
+          "n": 380
+        }
+      },
+      "vector": {
+        "all": {
+          "hit@1": 497,
+          "hit@5": 704,
+          "n": 770
+        },
+        "anexo": {
+          "hit@1": 13,
+          "hit@5": 30,
+          "n": 30
+        },
+        "campo": {
+          "hit@1": 150,
+          "hit@5": 298,
+          "n": 360
+        },
+        "medicion": {
+          "hit@1": 334,
+          "hit@5": 376,
+          "n": 380
+        }
+      }
+    }
+  },
+  "k": 5,
+  "reranker": "BAAI/bge-reranker-v2-m3-int8",
+  "seconds": 3518.0,
+  "thresholds_from_dev": {
+    "hybrid": 0.03278688524590164,
+    "lexical": 7.67654550511223,
+    "rerank": -1.421169400215149,
+    "vector": 0.5832540988922119
+  }
+}
