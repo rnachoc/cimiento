@@ -31,7 +31,25 @@ def main(argv: list[str] | None = None) -> int:
     st.add_argument("--data", type=Path, default=Path("data/generated"))
     st.add_argument("--out", type=Path, default=Path("evals/reports"))
     st.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
+    cr = sub.add_parser("cost", help="tokens and cost per model from exported spans; content check")
+    cr.add_argument("--spans", type=Path, required=True)
+    cr.add_argument("--prices", type=Path, default=Path("evals/config/prices.json"))
+    cr.add_argument("--data", type=Path, default=Path("data/generated"))
+    cr.add_argument("--out", type=Path, default=Path("evals/reports"))
     args = parser.parse_args(argv)
+
+    if args.cmd == "cost":
+        from .cost import check_no_content, load_spans, render, report
+
+        spans = load_spans(args.spans)
+        content = check_no_content(spans, args.data)
+        cost = report(spans, json.loads(args.prices.read_text(encoding="utf-8")))
+        args.out.mkdir(parents=True, exist_ok=True)
+        (args.out / "cost.md").write_text(render(cost, content), encoding="utf-8")
+        summary = json.dumps({"cost": cost, "content": content}, indent=2)
+        (args.out / "cost.json").write_text(summary + "\n", encoding="utf-8")
+        print((args.out / "cost.md").read_text(encoding="utf-8"))
+        return 1 if content["violations"] else 0
 
     if args.cmd == "site":
         from cimiento_agents.llm import FakeModel, Recordings, model_from_env

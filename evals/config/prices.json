@@ -1,0 +1,10 @@
+{
+  "source": "Anthropic list prices per million tokens, USD (pricing table cached 2026-11-03). Check https://www.anthropic.com/pricing before relying on them.",
+  "eur_per_usd": null,
+  "eur_per_usd_note": "Set the exchange rate you want to use (for example from your bank on the day). Without it the report shows USD only.",
+  "models": {
+    "claude-opus-5-5": {"input_usd_per_mtok": 4.0, "output_usd_per_mtok": 20.0},
+    "claude-sonnet-5-5": {"input_usd_per_mtok": 2.0, "output_usd_per_mtok": 10.0},
+    "claude-haiku-5-5": {"input_usd_per_mtok": 0.10, "output_usd_per_mtok": 0.50}
+  }
+}

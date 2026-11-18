@@ -20,7 +20,7 @@ from typing import Any, Literal, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from . import telemetry
+from . import telemetry, tracing
 
 T = TypeVar("T", bound=BaseModel)
 Source = Literal["claude", "recorded", "rule-based"]
@@ -127,7 +127,32 @@ class ClaudeModel:
             },
         }
         start = time.perf_counter()
-        response = self.client.messages.create(**params)
+        with tracing.span(
+            f"chat {self.model}",
+            **{
+                "gen_ai.operation.name": "chat",
+                "gen_ai.provider.name": "anthropic",
+                "gen_ai.request.model": self.model,
+                "cimiento.task": task,
+            },
+        ) as s:
+            response = self.client.messages.create(**params)
+            usage = response.usage
+            tracing.set_attributes(
+                s,
+                **{
+                    "gen_ai.usage.input_tokens": usage.input_tokens,
+                    "gen_ai.usage.output_tokens": usage.output_tokens,
+                    "gen_ai.response.finish_reasons": str(response.stop_reason),
+                },
+            )
+        tracing.record_model_call(
+            "anthropic",
+            self.model,
+            usage.input_tokens,
+            usage.output_tokens,
+            time.perf_counter() - start,
+        )
         if response.stop_reason == "refusal":
             telemetry.event("model_refusal", task=task, model=self.model)
             raise ModelRefused(f"{self.model} declined task {task}")
@@ -182,6 +207,18 @@ class FakeModel:
             key = request_key(task, self.replay_model, system, user, schema)
             rec = self.recordings.load(task, self.replay_model, key)
             if rec is not None:
+                with tracing.span(
+                    f"chat {self.replay_model}",
+                    **{
+                        "gen_ai.operation.name": "chat",
+                        "gen_ai.provider.name": "cimiento.recorded",
+                        "gen_ai.request.model": self.replay_model,
+                        "cimiento.task": task,
+                        "gen_ai.usage.input_tokens": int(rec.get("input_tokens", 0)),
+                        "gen_ai.usage.output_tokens": int(rec.get("output_tokens", 0)),
+                    },
+                ):
+                    pass
                 telemetry.event("model_call", task=task, model=self.replay_model, source="recorded")
                 return ModelResult(
                     schema.model_validate(rec["output"]),
@@ -191,7 +228,23 @@ class FakeModel:
         if rule_based is None:
             raise LookupError(f"no recording and no rule-based reader for task {task}")
         telemetry.event("model_call", task=task, model="rule-based", source="rule-based")
-        return ModelResult(rule_based(), "rule-based", "rule-based")
+        start = time.perf_counter()
+        with tracing.span(
+            "chat rule-based",
+            **{
+                "gen_ai.operation.name": "chat",
+                "gen_ai.provider.name": "cimiento.rule-based",
+                "gen_ai.request.model": "rule-based",
+                "cimiento.task": task,
+                "gen_ai.usage.input_tokens": 0,
+                "gen_ai.usage.output_tokens": 0,
+            },
+        ):
+            out = rule_based()
+        tracing.record_model_call(
+            "cimiento.rule-based", "rule-based", 0, 0, time.perf_counter() - start
+        )
+        return ModelResult(out, "rule-based", "rule-based")
 
 
 def strict_schema(schema: type[BaseModel]) -> dict[str, Any]:

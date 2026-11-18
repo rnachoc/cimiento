@@ -257,6 +257,9 @@ def render(dev: dict, ev: dict) -> str:
 
 
 def evaluate(data_dir: Path, model: Model, out_dir: Path) -> dict:
+    from cimiento_agents import tracing
+
+    tracing.configure()  # exports spans when CIMIENTO_TRACE_FILE or OTEL_EXPORTER_OTLP_ENDPOINT is set
     dev = run(data_dir / "dev", model)
     ev = run(data_dir / "eval", model)
     out_dir.mkdir(parents=True, exist_ok=True)

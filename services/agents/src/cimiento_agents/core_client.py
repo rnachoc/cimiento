@@ -13,7 +13,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from . import telemetry
+from . import telemetry, tracing
 
 ALLOWED = (
     ("POST", re.compile(r"^/api/tenders$")),
@@ -64,9 +64,16 @@ class CoreClient:
         headers = dict(self.headers)
         if idem:
             headers["Idempotency-Key"] = idem
-        with telemetry.timed("core_call", method=method) as t:
+        route = re.sub(r"/\d+", "/{id}", path.split("?")[0])
+        with (
+            telemetry.timed("core_call", method=method) as t,
+            tracing.span(
+                f"{method} {route}", **{"http.request.method": method, "url.template": route}
+            ) as s,
+        ):
             r = self.http.request(method, path, json=body, headers=headers)
             t["status"] = r.status_code
+            tracing.set_attributes(s, **{"http.response.status_code": r.status_code})
         r.raise_for_status()
         return r.json()
 
@@ -93,6 +100,7 @@ class CoreClient:
         citations: list[dict[str, Any]],
         signals: list[str],
     ) -> dict[str, Any]:
+        tracing.record_proposal(type_)
         body = {
             "tenderId": tender_id,
             "type": type_,
@@ -131,6 +139,15 @@ class RecordingCore:
         signals: list[str],
     ) -> dict[str, Any]:
         check_allowed("POST", "/api/proposals")
+        with tracing.span(
+            "POST /api/proposals",
+            **{
+                "http.request.method": "POST",
+                "url.template": "/api/proposals",
+                "cimiento.proposal.type": type_,
+            },
+        ):
+            tracing.record_proposal(type_)
         p = {
             "id": len(self.proposals) + 1,
             "tenderId": tender_id,
