@@ -17,7 +17,9 @@ from .injection import detect
 from .llm import Model
 from .planner import DEPENDENCIES, PlanChoice, build_schedule, crew_days, rule_based_choice
 from .planner import SYSTEM as PLANNER_SYSTEM
+from .progress import ProgressReport, analyse, progress_payload
 from .proposal_writer import proposal_draft
+from .reports import check_sources, daily_report, known_records, minutes, rfi, weekly_report
 from .takeoff import SYSTEM as TAKEOFF_SYSTEM
 from .takeoff import TakeoffError, TakeoffReading, compute_items, rule_based_read
 from .tender_agents import Rate, bid_no_bid, budget_lines, risk_signals
@@ -45,6 +47,8 @@ class TenderRun:
     recommendation: str | None = None
     errors: list[str] = field(default_factory=list)
     schedule: dict | None = None
+    progress: ProgressReport | None = None
+    reports: list[str] = field(default_factory=list)
 
 
 def _merge(*groups: list[Citation]) -> list[Citation]:
@@ -121,6 +125,7 @@ def analyse_tender(
     run.proposal_ids.append(proposal["id"])
     if rates is not None:
         _tender_agents(run, docs, model, core, tender["id"], rates, signals)
+        analyse_site(run, folder, core, tender["id"])
     return run
 
 
@@ -222,3 +227,44 @@ def _tender_agents(
         tender_id, "DOCUMENT_DRAFT", {"kind": "memoria_tecnica", "sections": draft}, cites, signals
     )
     run.proposal_ids.append(p["id"])
+
+    rfi_report = rfi(run.not_found, [list(r.citations) for r in risks if r.kind == "CONTRADICTION"])
+    if rfi_report is not None:
+        check_sources(
+            rfi_report,
+            known_records(
+                None,
+                list(run.citations.values()) + [c for r in risks for c in r.citations],
+                run.not_found,
+            ),
+        )
+        p = core.submit(tender_id, "REPORT", rfi_report.payload(), cites or row_cites[:1], signals)
+        run.proposal_ids.append(p["id"])
+        run.reports.append("rfi")
+
+
+def analyse_site(run: TenderRun, folder: Path, core: Core, tender_id: int) -> None:
+    """Phase 6: progress against the schedule and the site reports (drafts)."""
+    site = folder / "obra"
+    if run.schedule is None or not (site / "avance_semanal.csv").exists():
+        return
+    progress = analyse(run.tender, site, run.schedule)
+    run.progress = progress
+    csv_cite = [
+        {
+            "document": "obra/avance_semanal.csv",
+            "page": 1,
+            "text": f"semana {progress.week}, corte {progress.cut_date}",
+        }
+    ]
+    p = core.submit(tender_id, "PROGRESS_UPDATE", progress_payload(progress), csv_cite, [])
+    run.proposal_ids.append(p["id"])
+    known = known_records(progress, [], [])
+    reports = [weekly_report(progress), minutes(progress)]
+    if progress.report_dates:
+        reports.append(daily_report(progress, f"parte:{progress.report_dates[-1]}"))
+    for rep in reports:
+        check_sources(rep, known)  # raises: no report with an unsupported claim reaches the core
+        p = core.submit(tender_id, "REPORT", rep.payload(), csv_cite, [])
+        run.proposal_ids.append(p["id"])
+        run.reports.append(rep.kind)
