@@ -115,36 +115,77 @@ public final class Exports {
         return priced;
     }
 
+    /** Root concept (the work) and the chapter that holds every work item of the exported budget. */
+    public static final String BC3_ROOT = "OBRA##";
+    public static final String BC3_CHAPTER = "C01#";
+
     /**
-     * Budget as a FIEBDC-3 (BC3) file: a root concept for the tender and one concept per priced line
-     * with its quantity in the root's breakdown. Lines end with CR LF, as the format expects.
+     * Budget as a FIEBDC-3/2016 (BC3) file, following the format's own rules:
+     * <ul>
+     *   <li>~V: issuer, version with date, Windows character set (ANSI), information type 2 (budget);</li>
+     *   <li>~K: the format's default decimals (field 1 kept for older readers, field 3 complete), EUR;</li>
+     *   <li>a root concept (OBRA##, the tender code in its summary) that holds one chapter (#), which
+     *       holds one work item per priced line;</li>
+     *   <li>quantities and prices with exactly the decimals declared in ~K (2), so the file total is the
+     *       sum of quantity x price as the BUDGET rule computes it;</li>
+     *   <li>records end with CR LF and the file with ASCII 26.</li>
+     * </ul>
+     * A line whose quantity needs more than 2 decimals cannot be written exactly and is refused.
      */
     public static String bc3(String tenderCode, String title, LocalDate date, List<PricedLine> lines) {
-        String root = clean(tenderCode) + "##";
+        String root = BC3_ROOT;
         String day = date.format(BC3_DATE);
-        BigDecimal total = lines.stream().map(PricedLine::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = lines.stream().map(PricedLine::amount).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.UNNECESSARY);
         StringBuilder sb = new StringBuilder();
-        sb.append("~V|Cimiento|FIEBDC-3/2016|Cimiento||ANSI|").append("\r\n");
-        sb.append("~K|\\2\\2\\3\\2\\2\\2\\2\\EUR\\|").append("\r\n");
-        sb.append("~C|").append(root).append("||").append(clean(title)).append('|')
-                .append(total.toPlainString()).append('|').append(day).append("|0|").append("\r\n");
+        record(sb, "~V|Cimiento|FIEBDC-3/2016\\" + day + "|Cimiento||ANSI|" + summary(title) + "|2|");
+        record(sb, "~K|2\\2\\2\\3\\2\\2\\2\\2\\EUR\\||3\\2\\\\3\\3\\\\2\\2\\2\\2\\2\\2\\2\\2\\EUR\\|");
+        record(sb, "~C|" + root + "||" + summary(clean(tenderCode) + " " + title) + "|" + total.toPlainString() + "|" + day
+                + "|0|");
+        record(sb, "~D|" + root + "|" + BC3_CHAPTER + "\\\\\\|");
+        record(sb, "~C|" + BC3_CHAPTER + "||Presupuesto de ejecución material|" + total.toPlainString() + "|" + day + "|0|");
         StringBuilder breakdown = new StringBuilder();
         for (PricedLine l : lines) {
-            breakdown.append(clean(l.code())).append("\\1\\").append(l.quantity().stripTrailingZeros().toPlainString())
-                    .append('\\');
+            breakdown.append(code(l.code())).append("\\\\").append(twoDecimals(l.quantity(), l.code())).append('\\');
         }
-        sb.append("~D|").append(root).append('|').append(breakdown).append('|').append("\r\n");
+        record(sb, "~D|" + BC3_CHAPTER + "|" + breakdown + "|");
         for (PricedLine l : lines) {
-            sb.append("~C|").append(clean(l.code())).append('|').append(clean(l.unit())).append('|')
-                    .append(clean(l.description())).append('|').append(l.unitPrice().toPlainString()).append('|')
-                    .append(day).append("|0|").append("\r\n");
+            record(sb, "~C|" + code(l.code()) + "|" + clean(l.unit()) + "|" + summary(l.description()) + "|"
+                    + twoDecimals(l.unitPrice(), l.code()) + "|" + day + "|0|");
         }
-        return sb.toString();
+        return sb.append('\u001A').toString();
+    }
+
+    private static void record(StringBuilder sb, String record) {
+        sb.append(record).append("\r\n");
+    }
+
+    private static String twoDecimals(BigDecimal value, String code) {
+        try {
+            return value.setScale(2, RoundingMode.UNNECESSARY).toPlainString();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(code + ": " + value.toPlainString() + " has more than 2 decimals");
+        }
+    }
+
+    /** Codes are at most 20 characters and cannot contain the format's separators. */
+    private static String code(String s) {
+        String c = clean(s).replace(" ", "");
+        if (c.isEmpty() || c.length() > 18) {
+            throw new IllegalArgumentException("code '" + s + "' does not fit a BC3 code");
+        }
+        return c;
+    }
+
+    /** The format recommends summaries of at most 64 characters. */
+    private static String summary(String s) {
+        String c = clean(s);
+        return c.length() <= 64 ? c : c.substring(0, 64).strip();
     }
 
     /** BC3 uses |, \ and ~ as separators and is single-line per record. */
     static String clean(String s) {
-        return s == null ? "" : s.replaceAll("[|\\\\~\\r\\n]", " ").strip();
+        return s == null ? "" : s.replaceAll("[|\\\\~\\r\\n\\u001A]", " ").strip();
     }
 
     private static void text(Document doc, Element parent, String name, String value) {

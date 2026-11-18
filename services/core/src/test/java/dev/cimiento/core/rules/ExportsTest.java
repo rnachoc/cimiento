@@ -86,23 +86,80 @@ class ExportsTest {
                 .hasMessageContaining("ZZ99");
     }
 
-    @Test
-    void bc3HasRootBreakdownAndOneConceptPerLine() {
-        var lines = Exports.price(List.of(new Payloads.BudgetLine("MT01", new BigDecimal("100.50")),
+    static List<Exports.PricedLine> twoLines() {
+        return Exports.price(List.of(new Payloads.BudgetLine("MT01", new BigDecimal("100.50")),
                 new Payloads.BudgetLine("CI01", new BigDecimal("3"))), RATES, Map.of("MT01", "Excavación | vaciado"));
-        String bc3 = Exports.bc3("E-001", "Presupuesto E-001", MONDAY, lines);
-        String[] records = bc3.split("\r\n");
-        assertThat(bc3).endsWith("\r\n");
-        assertThat(bc3.replace("\r\n", "")).doesNotContain("\n").doesNotContain("\r");
-        assertThat(records[0]).startsWith("~V|").contains("FIEBDC-3/2016").contains("|ANSI|");
-        assertThat(records[1]).startsWith("~K|");
-        assertThat(records[2]).isEqualTo("~C|E-001##||Presupuesto E-001|1535.48|04012027|0|");
-        assertThat(records[3]).isEqualTo("~D|E-001##|MT01\\1\\100.5\\CI01\\1\\3\\|");
-        // separators inside text are removed
-        assertThat(records[4]).isEqualTo("~C|MT01|m3|Excavación   vaciado|12.35|04012027|0|");
-        assertThat(records[5]).isEqualTo("~C|CI01|m3|A02|98.10|04012027|0|");
-        assertThat(records).hasSize(6);
+    }
+
+    /** Record layouts as written in the FIEBDC-3/2016 specification. */
+    @Test
+    void bc3FollowsTheFiebdc3Layout() {
+        String bc3 = Exports.bc3("E-001", "Presupuesto E-001", MONDAY, twoLines());
+        // records end with CR LF, the file with ASCII 26, and nothing else breaks a line
+        assertThat(bc3).endsWith("\r\n\u001A");
+        String body = bc3.substring(0, bc3.length() - 1);
+        assertThat(body.replace("\r\n", "")).doesNotContain("\n").doesNotContain("\r");
+        assertThat(body.split("\r\n")).containsExactly(
+                "~V|Cimiento|FIEBDC-3/2016\\04012027|Cimiento||ANSI|Presupuesto E-001|2|",
+                // DN DD DS DR DI DP DC DM DIVISA (defaults), empty CI GG BI BAJA IVA, then the complete field
+                "~K|2\\2\\2\\3\\2\\2\\2\\2\\EUR\\||3\\2\\\\3\\3\\\\2\\2\\2\\2\\2\\2\\2\\2\\EUR\\|",
+                "~C|OBRA##||E-001 Presupuesto E-001|1535.48|04012027|0|",
+                "~D|OBRA##|C01#\\\\\\|",
+                "~C|C01#||Presupuesto de ejecución material|1535.48|04012027|0|",
+                "~D|C01#|MT01\\\\100.50\\CI01\\\\3.00\\|",
+                // separators inside text are removed
+                "~C|MT01|m3|Excavación   vaciado|12.35|04012027|0|",
+                "~C|CI01|m3|A02|98.10|04012027|0|");
         // the Spanish text survives the ANSI code page
-        assertThat(new String(bc3.getBytes(Exports.BC3_CHARSET), Exports.BC3_CHARSET)).contains("Excavación");
+        assertThat(new String(bc3.getBytes(Exports.BC3_CHARSET), Exports.BC3_CHARSET)).contains("ejecución");
+    }
+
+    @Test
+    void bc3FirstKFieldHasEightDecimalCountsAndTheCurrency() {
+        String k = Exports.bc3("E-001", "x", MONDAY, twoLines()).lines().filter(l -> l.startsWith("~K|")).findFirst()
+                .orElseThrow();
+        String[] fields = k.split("\\|", -1);
+        String[] first = fields[1].split("\\\\", -1);
+        assertThat(first).hasSize(10); // 8 counts, EUR and the empty end after the final backslash
+        assertThat(first[8]).isEqualTo("EUR");
+        assertThat(fields[3].split("\\\\", -1)).hasSize(16); // 13 counts with 2 empty slots, EUR, end
+    }
+
+    /** What a reader checks: the declared prices equal the sum of quantity x price of the breakdown. */
+    @Test
+    void bc3TotalsAreConsistentForAReader() {
+        String bc3 = Exports.bc3("E-001", "x", MONDAY, twoLines());
+        Map<String, BigDecimal> price = new java.util.HashMap<>();
+        Map<String, String> breakdown = new java.util.HashMap<>();
+        for (String r : bc3.split("\r\n")) {
+            String[] f = r.split("\\|", -1);
+            if (f[0].equals("~C")) {
+                price.put(f[1], new BigDecimal(f[4]));
+            } else if (f[0].equals("~D")) {
+                breakdown.put(f[1], f[2]);
+            }
+        }
+        String[] parts = breakdown.get("C01#").split("\\\\", -1);
+        BigDecimal sum = BigDecimal.ZERO;
+        for (int i = 0; i + 2 < parts.length; i += 3) {
+            // each line amount has DC = 2 decimals, as declared in ~K
+            sum = sum.add(new BigDecimal(parts[i + 2]).multiply(price.get(parts[i]))
+                    .setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+        assertThat(sum).isEqualByComparingTo(price.get("C01#")).isEqualByComparingTo(price.get("OBRA##"))
+                .isEqualByComparingTo("1535.48");
+    }
+
+    @Test
+    void bc3RefusesWhatItCannotWriteExactly() {
+        var tooFine = Exports.price(List.of(new Payloads.BudgetLine("MT01", new BigDecimal("1.255"))), RATES, Map.of());
+        assertThatThrownBy(() -> Exports.bc3("E-001", "x", MONDAY, tooFine)).hasMessageContaining("more than 2 decimals");
+        var longCode = List.of(new Exports.PricedLine("X".repeat(25), "m3", "x", BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.ONE));
+        assertThatThrownBy(() -> Exports.bc3("E-001", "x", MONDAY, longCode)).hasMessageContaining("BC3 code");
+        // a long tender code is fine: it only goes into the root's summary
+        assertThat(Exports.bc3("T-" + "0".repeat(36), "x", MONDAY, twoLines())).contains("~C|OBRA##|");
+        String longTitle = "Presupuesto ".repeat(10);
+        assertThat(Exports.bc3("E-001", longTitle, MONDAY, twoLines()).split("\r\n")[2].split("\\|")[3]).hasSizeLessThanOrEqualTo(64);
     }
 }
