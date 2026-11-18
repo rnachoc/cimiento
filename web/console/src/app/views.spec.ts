@@ -52,8 +52,12 @@ describe('new views', () => {
     fixture.detectChanges();
     http.expectOne('/api/portfolio/7').flush(ITEM);
     http.expectOne((r) => r.url === '/api/proposals' && r.params.get('tenderId') === '7').flush([
-      proposal(1, 'BID_ANALYSIS', 'PENDING_REVIEW', { fields: { plazo_ejecucion_meses: '8', presupuesto_base_eur: '156530.84' }, notFound: ['visita_obligatoria'] },
-        { citations: [{ document: 'pliego', page: 1, text: 'Plazo: 8 meses' }, { document: 'pliego', page: 2, text: 'PBL' }], signals: ['INJECTION_DETECTED'] }),
+      // keys come back sorted (as the core stores them): citations must not be matched by position
+      proposal(1, 'BID_ANALYSIS', 'PENDING_REVIEW', {
+        fields: { anexo_plazo_ejecucion_meses: '7', penalidad_demora_eur_por_mil_dia: '0.6', plazo_ejecucion_meses: '8' },
+        sources: { penalidad_demora_eur_por_mil_dia: { document: 'pliego', page: 1 }, anexo_plazo_ejecucion_meses: { document: 'anexo', page: 1 } },
+        notFound: ['visita_obligatoria'] },
+        { citations: [{ document: 'pliego', page: 1, text: 'Penalidad' }, { document: 'anexo', page: 1, text: 'Programa' }], signals: ['INJECTION_DETECTED'] }),
       proposal(2, 'SCHEDULE', 'EXECUTED', { activities: [{ code: 'A01', name: 'Tierras', duration: 5 }, { code: 'A02', name: 'Estructura', duration: 10 }],
         links: [{ from: 'A01', to: 'A02', lag: 0 }] }, { ruleResults: [{ rule: 'CRITICAL_PATH', outcome: 'PASS', message: '', details: { duration: 15, critical: ['A01', 'A02'] } }] }),
       proposal(3, 'RISK_SIGNAL', 'EXECUTED', { kind: 'CONTRADICTION', severity: 'HIGH', description: 'Plazos distintos' }),
@@ -68,7 +72,10 @@ describe('new views', () => {
     expect(el.querySelector('[data-testid="budget"]')?.textContent).toContain('176.597');
     expect(text).toContain('Plazo de ejecución');
     expect(text).toContain('8 meses');
-    expect(text).toContain('pliego · pág. 1');
+    expect(el.querySelector('[data-testid="cite-anexo_plazo_ejecucion_meses"]')?.textContent).toContain('anexo · pág. 1');
+    expect(el.querySelector('[data-testid="cite-penalidad_demora_eur_por_mil_dia"]')?.textContent).toContain('pliego · pág. 1');
+    expect(el.querySelector('[data-testid="cite-plazo_ejecucion_meses"]')).toBeNull(); // no source given: no guess
+    expect(text).toContain('0,6 € por cada 1.000 € y día');
     expect(text).toContain('Visita obligatoria'); // not found in the documents
     expect(text).toContain('Instrucción plantada detectada');
     expect(text).toContain('Plazos distintos');

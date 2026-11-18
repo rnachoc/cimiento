@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Api, Citation, euros, PortfolioItem, Proposal, STAGE_LABELS, StageChange, TYPE_LABELS } from '../api';
+import { Api, euros, PortfolioItem, Proposal, STAGE_LABELS, StageChange, TYPE_LABELS } from '../api';
 import { daysLeft } from '../portfolio/portfolio';
 import { scheduleBars } from '../proposal/proposal-detail';
 
@@ -25,7 +25,8 @@ const REPORT_LABELS: Record<string, string> = {
   acta: 'Acta de reunión', parte_diario: 'Parte diario', memoria_tecnica: 'Memoria técnica',
 };
 
-interface Fact { key: string; label: string; value: string; cite: Citation | null; }
+interface Source { document: string; page: number; }
+interface Fact { key: string; label: string; value: string; cite: Source | null; }
 
 /** Everything about one tender on one page: what the documents say, what the agents propose, what the core decided. */
 @Component({
@@ -71,7 +72,7 @@ interface Fact { key: string; label: string; value: string; cite: Citation | nul
             <dl class="facts">
               @for (f of facts(); track f.key) {
                 <dt>{{ f.label }}</dt>
-                <dd>{{ f.value }} @if (f.cite) { <span class="cite" [title]="f.cite.text">{{ f.cite.document }} · pág. {{ f.cite.page }}</span> }</dd>
+                <dd>{{ f.value }} @if (f.cite) { <span class="cite" [attr.data-testid]="'cite-' + f.key">{{ f.cite.document }} · pág. {{ f.cite.page }}</span> }</dd>
               }
             </dl>
           } @else { <p class="muted">Sin análisis del pliego.</p> }
@@ -211,12 +212,14 @@ export class TenderFile {
   readonly documents = computed(() => this.proposals().filter((p) => p.type === 'REPORT' || p.type === 'DOCUMENT_DRAFT'));
   readonly notFound = computed<string[]>(() => (this.content(this.bid())?.notFound ?? []).map((k: string) => this.fieldLabel(k)));
   readonly facts = computed<Fact[]>(() => {
-    const b = this.bid();
-    const fields: Record<string, unknown> = this.content(b)?.fields ?? {};
-    const cites = b?.citations ?? [];
+    const c = this.content(this.bid());
+    const fields: Record<string, unknown> = c?.fields ?? {};
+    // each field names its own source; without one, no citation is shown rather than a guessed one
+    const sources: Record<string, Source> = c?.sources ?? {};
+    const rank = (k: string) => (Object.keys(FIELD_LABELS).indexOf(k) + 1) || 999;
     return Object.entries(fields)
-      .sort(([a], [c]) => Object.keys(FIELD_LABELS).indexOf(a) - Object.keys(FIELD_LABELS).indexOf(c))
-      .map(([key, value], i) => ({ key, label: this.fieldLabel(key), value: this.fieldValue(key, value), cite: cites[this.citeIndex(key, i)] ?? null }));
+      .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+      .map(([key, value]) => ({ key, label: this.fieldLabel(key), value: this.fieldValue(key, value), cite: sources[key] ?? null }));
   });
 
   constructor() {
@@ -230,12 +233,6 @@ export class TenderFile {
     });
     this.api.tenderProposals(id).subscribe({ next: (ps) => this.proposals.set(ps) });
     this.api.stages(id).subscribe({ next: (h) => this.history.set(h) });
-  }
-
-  /** Bid analysis citations are in the order of its fields (the agents write them that way). */
-  private citeIndex(key: string, i: number): number {
-    const order = Object.keys(this.content(this.bid())?.fields ?? {});
-    return order.indexOf(key) >= 0 ? order.indexOf(key) : i;
   }
 
   private content(p: Proposal | undefined): any {
