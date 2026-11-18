@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 3 a 5 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 6.
+Estado: fases 3 a 6 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 7.
 
 ## Fase 0: repo base
 
@@ -109,5 +109,19 @@ Plannings válidos 30/30; duración exacta 30/30; ruta crítica idéntica 30/30;
 ### Deuda conocida
 - La métrica del planificador mide acuerdo con las reglas del generador, no habilidad de planificación.
 
+## Fase 6: obra e informes
+
+### Qué se hizo
+- `progress.py`: SPI, retraso (cota inferior si la actividad no ha empezado), holgura, alarma e impacto con CPM; propuesta PROGRESS_UPDATE.
+- `reports.py`: parte diario, RFI (huecos y contradicciones), informe semanal y acta; cada frase con fuentes y `check_sources` que rechaza afirmaciones sin fuente. Siempre borradores.
+- `make eval-site`. ADR 0007. Prueba de punta a punta contra el núcleo real: 21 propuestas aceptadas, auditoría íntegra.
+- Consola (fase 8): el usuario pide diseño muy llamativo e interactivo (referencias Apple, Netflix, HBO, Kick), sin copiar marcas; prompt 08 actualizado.
+
+### Resultados (eval, sin clave)
+Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impacto exacto 26/30; 90 informes con fuentes.
+
+### Deuda conocida
+- Retraso de actividades no iniciadas solo como cota inferior (10 casos en eval); de ahí los fallos de impacto.
+
 ## Siguiente paso
-Fase 6: ejecutar prompts/06-obra.md (y publicar el informe de búsqueda cuando termine).
+Fase 7: ejecutar prompts/07-mcp.md (y publicar el informe de búsqueda cuando termine).

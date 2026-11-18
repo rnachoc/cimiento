@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phases 0 to 5 done** (the phase 3 retrieval report is still running). See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **in progress, phases 0 to 6 done** (the phase 3 retrieval report is still running). See [Progress](#progress). Numbers below are only the ones measured so far.
 
 ## What it does (target scope)
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -58,6 +58,8 @@ cp .env.example .env      # then replace the placeholder keys (the core refuses 
 make up                   # Postgres with pgvector, Kafka
 make data                 # synthetic tenders: dev (seed 42) and eval (seed 1337)
 make test                 # every test suite (the core uses Testcontainers, so Docker must run)
+make eval-site            # site progress and reports eval
+make eval-plan            # planner eval
 make eval-bid             # tender agents eval (keyless baseline without ANTHROPIC_API_KEY)
 make eval-retrieval       # search eval; first run downloads about 0.8 GB of local models
 ```
@@ -101,6 +103,20 @@ Measured by `make eval-plan` on the eval split; every proposed schedule is check
 
 These figures are expected by construction: the reference schedule follows the generator's productivity and dependency rules, and the planner's dependency table encodes the same construction sequence. They show that quantities, rates, crews, the graph, the critical path and the term check fit together end to end; they do not measure planning skill.
 
+### Site progress and reports, keyless baseline
+Measured by `make eval-site` on the eval split. Report: [evals/reports/site.md](evals/reports/site.md).
+
+| Metric | Eval split |
+|---|---|
+| Planted delays detected | 42/42 |
+| Activities wrongly flagged as delayed | 0 |
+| Alarm (delay beyond float) agrees with reference | 182/184 |
+| Delay days exact, activity already started | 32/32 |
+| Impact on the project end exact | 26/30 |
+| Reports drafted, every sentence with an existing source | 90 |
+
+When a delayed activity has not started yet at the cut date, the data only gives a lower bound of its delay (10 cases on eval); the 4 impact misses and the 2 alarm disagreements come from those cases.
+
 ### Agents with Claude
 Not measured yet. Real-model runs happen once, in phase 11, and will be reported separately from the keyless baseline.
 
@@ -121,7 +137,7 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 4a | Agent infrastructure and bid analyst | done |
 | 4b | Remaining tender agents | done |
 | 5 | Planner agent | done |
-| 6 | Site progress and reports | planned |
+| 6 | Site progress and reports | done |
 | 7 | Read-only MCP server | planned |
 | 8 | Review console | planned |
 | 9 | Events through Kafka | planned |

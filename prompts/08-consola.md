@@ -9,7 +9,7 @@ web/console en Angular: bandeja de lo que las reglas mandaron a una persona; por
 Playwright aprueba una propuesta en un navegador real en CI y el núcleo la marca como ejecutada; pruebas de componentes con Vitest.
 
 ## Notas
-Interfaz sobria y clara; accesibilidad básica (teclado, contraste).
+Diseño muy llamativo, interactivo y vistoso, con la estética de páginas como Apple, Netflix, HBO o Kick como inspiración (tema oscuro cinematográfico, portada con impacto, tarjetas en carrusel, transiciones y microinteracciones fluidas), sin copiar logos, marcas ni recursos de esas empresas. Mantener accesibilidad: teclado, contraste AA, foco visible y `prefers-reduced-motion`.
 
 ## Al terminar
 Ejecuta `make test`, actualiza PROGRESS.md (qué se hizo, decisiones, deuda conocida, siguiente fase), haz commit con Conventional Commits y para. No empieces la siguiente fase.
