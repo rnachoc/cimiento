@@ -26,7 +26,7 @@ PDFs are read with `pypdf` (page footers removed) and split into one chunk per c
 CI never downloads models: tests use deterministic stand-ins (a hashing embedder and a token-overlap reranker) that are never used to report quality. The real models run only in `make eval-retrieval`, cached in `~/.cache/fastembed`.
 
 ## Results
-See [evals/reports/retrieval.md](../../evals/reports/retrieval.md). Chosen method and thresholds: [evals/config/search.json](../../evals/config/search.json).
+Eval split, chosen on dev: reranked hit@1 84.8 %, hit@5 90.9 % (vector alone reaches 91.4 % hit@5). "No consta" flags 89/90 unanswerable questions but also 206/770 answerable ones. Full report: [evals/reports/retrieval.md](../../evals/reports/retrieval.md); method and thresholds: [evals/config/search.json](../../evals/config/search.json).
 
 ## Consequences
 - Search is limited to one tender's documents at a time (tens of chunks), which is easier than a large archive; the README says so.

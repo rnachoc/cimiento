@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phases 0 to 7 done** (the phase 3 retrieval report is still running). See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **in progress, phases 0 to 7 done**. See [Progress](#progress). Numbers below are only the ones measured so far.
 
 ## What it does (target scope)
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -91,7 +91,16 @@ The read-only MCP server exposes projects, tenders, schedules with critical path
 Measured by `make test` (`GroundTruthTest`) on all 66 generated tenders of both splits (60 plus 6 clean twins). The Java engine and the independent Python reference agree on **66 of 66** for project duration, early and late dates, total float, critical activities and the contract-term flag; takeoff sums and budget totals also match on 66 of 66. This checks the engine's arithmetic against a second implementation, not the quality of any model.
 
 ### Retrieval
-Pending: the first run of `make eval-retrieval` is in progress. The table will be published here as measured, with the caveat that questions are synthetic.
+Measured by `make eval-retrieval` with local models (no LLM): MiniLM multilingual embeddings in pgvector and the `bge-reranker-v2-m3` int8 reranker. The method and the "no consta" thresholds were chosen on the dev split; the eval split uses question wording never used for those choices. **Questions are synthetic** and each search covers one tender's documents (about 33 chunks). Report: [evals/reports/retrieval.md](evals/reports/retrieval.md).
+
+| Method (eval split, 770 answerable questions) | hit@1 | hit@5 |
+|---|---|---|
+| Lexical (BM25) | 67.9 % | 75.3 % |
+| Vector | 64.5 % | 91.4 % |
+| Hybrid (RRF) | 70.4 % | 83.4 % |
+| **Reranked (chosen on dev)** | **84.8 %** | 90.9 % |
+
+"No consta" with the reranked method and its dev threshold: 89 of 90 unanswerable questions flagged, but also 206 of 770 answerable ones (27 %). The threshold set on dev does not carry over well to the new question wording; this is the main weakness of search today.
 
 ### Tender agents, keyless baseline
 Measured by `make eval-bid` on the eval split (30 tenders plus 3 clean twins, held-out wording). **Source: rule-based reader, no model.** This is a floor to compare models against, not a model result. Full report: [evals/reports/bid.md](evals/reports/bid.md).
@@ -152,7 +161,7 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 0 | Repo, Makefile, CI with gitleaks, ADR 0001 | done |
 | 1 | Synthetic data generator with ground truth | done |
 | 2 | Java core: rules, CPM, audit chain, roles | done |
-| 3 | Ingestion and search with citations | done; retrieval report pending |
+| 3 | Ingestion and search with citations | done |
 | 4a | Agent infrastructure and bid analyst | done |
 | 4b | Remaining tender agents | done |
 | 5 | Planner agent | done |

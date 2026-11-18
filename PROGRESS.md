@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 3 a 7 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 8.
+Estado: fases 0 a 7 terminadas (2026-11-18). Siguiente: fase 8.
 
 ## Fase 0: repo base
 
@@ -73,8 +73,11 @@ Estado: fases 3 a 7 terminadas salvo el informe de búsqueda (2026-11-18). Sigui
 - `make eval-retrieval`: preguntas sintéticas desde la verdad terreno, redacción distinta en dev y eval, método y umbrales elegidos en dev. ADR 0004.
 - Tests sin descargar modelos (embedder por hash y reordenador por solapamiento, nunca usados para medir calidad); pgvector comparado con la versión en memoria contra un Postgres real.
 
-### Pendiente
-- El informe `evals/reports/retrieval.md` (la evaluación con modelos reales tarda 1 a 2 horas en CPU; en curso).
+### Resultados (eval, modelos locales, sin LLM)
+hit@1 / hit@5: léxico 67,9 / 75,3 %; vectores 64,5 / 91,4 %; híbrido 70,4 / 83,4 %; reordenado 84,8 / 90,9 % (elegido en dev). "No consta": 89/90 sin respuesta marcadas, pero 206/770 con respuesta también marcadas (umbral de dev demasiado alto para la redacción nueva).
+
+### Deuda conocida
+- Umbral de "no consta" que no generaliza; la evaluación tarda 1 a 2 horas en CPU (reordenador).
 
 ## Fases 4a y 4b: agentes de licitación
 
@@ -131,4 +134,4 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Tests con núcleo simulado (lecturas, anotaciones, enmascarado, escrituras rechazadas en cliente) y prueba contra el núcleo real: lectura completa por MCP y 403 en cada POST con la clave ANALYST. ADR 0008. Ejemplo de configuración en el README.
 
 ## Siguiente paso
-Fase 8: ejecutar prompts/08-consola.md, con el diseño llamativo pedido (y publicar el informe de búsqueda cuando termine).
+Fase 8: ejecutar prompts/08-consola.md, con el diseño llamativo pedido .
