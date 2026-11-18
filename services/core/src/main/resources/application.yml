@@ -1,6 +1,26 @@
 spring:
   application:
     name: cimiento-core
+  datasource:
+    url: ${CIMIENTO_DB_URL:jdbc:postgresql://localhost:5432/cimiento}
+    username: ${POSTGRES_USER:cimiento}
+    password: ${POSTGRES_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+cimiento:
+  keys:
+    agent: ${CIMIENTO_AGENT_KEY:}
+    analyst: ${CIMIENTO_ANALYST_KEY:}
+    reviewer: ${CIMIENTO_REVIEWER_KEY:}
+  review:
+    # Budgets at or above this amount (EUR, VAT excluded) always need a person.
+    amount-threshold-eur: 1000000
+
 management:
   endpoints:
     web:
