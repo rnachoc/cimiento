@@ -26,7 +26,25 @@ jobs:
           java-version: "17"
           cache: maven
       - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.3"
+          cache: npm
+          cache-dependency-path: web/console/package-lock.json
       - run: make test
+
+  e2e:
+    # A real browser approves a proposal through nginx and the console; the core executes it.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.3"
+          cache: npm
+          cache-dependency-path: web/console/package-lock.json
+      - run: cd web/console && npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+      - run: ./scripts/e2e.sh
 
   gitleaks:
     runs-on: ubuntu-24.04

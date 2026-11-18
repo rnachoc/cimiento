@@ -28,7 +28,7 @@ down: .env ## Stop local services (keeps volumes)
 	$(COMPOSE) down
 
 .PHONY: test
-test: test-core test-py ## Run every test suite
+test: test-core test-py test-console ## Run every test suite
 
 .PHONY: test-core
 test-core: data-if-missing
@@ -40,6 +40,16 @@ test-core: data-if-missing
 data-if-missing:
 	@if [ ! -f "$(DATA_DIR)/dev/manifest.json" ] || [ ! -f "$(DATA_DIR)/eval/manifest.json" ]; then \
 	  $(MAKE) --no-print-directory data; fi
+
+.PHONY: test-console
+test-console:
+	cd web/console && npm ci --no-audit --no-fund --loglevel=error && npx ng test --watch=false
+
+# Real browser against core + console in docker compose (needs Docker and Playwright's Chromium).
+.PHONY: e2e
+e2e: ## End-to-end: a real browser approves a proposal through the console
+	cd web/console && npm ci --no-audit --no-fund --loglevel=error && npx playwright install chromium
+	./scripts/e2e.sh
 
 .PHONY: test-py
 test-py:

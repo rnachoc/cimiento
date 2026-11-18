@@ -42,5 +42,33 @@ services:
       timeout: 10s
       retries: 20
 
+  # Application profile: `docker compose --profile app up --build` (used by `make e2e`).
+  core:
+    profiles: ["app"]
+    build: ../services/core
+    environment:
+      CIMIENTO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cimiento}
+      POSTGRES_USER: ${POSTGRES_USER:-cimiento}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      CIMIENTO_AGENT_KEY: ${CIMIENTO_AGENT_KEY:?set CIMIENTO_AGENT_KEY}
+      CIMIENTO_ANALYST_KEY: ${CIMIENTO_ANALYST_KEY:?set CIMIENTO_ANALYST_KEY}
+      CIMIENTO_REVIEWER_KEY: ${CIMIENTO_REVIEWER_KEY:?set CIMIENTO_REVIEWER_KEY}
+    ports:
+      - "${CORE_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  console:
+    profiles: ["app"]
+    build: ../web/console
+    environment:
+      CORE_URL: http://core:8080
+      CIMIENTO_REVIEWER_KEY: ${CIMIENTO_REVIEWER_KEY:?set CIMIENTO_REVIEWER_KEY}
+    ports:
+      - "${CONSOLE_PORT:-8088}:8080"
+    depends_on:
+      - core
+
 volumes:
   pgdata:
