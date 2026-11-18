@@ -84,6 +84,23 @@ class Recordings:
         )
 
 
+def build_params(
+    model: str, effort: str, system: str, user: str, schema: type[BaseModel]
+) -> dict[str, Any]:
+    """Messages API parameters shared by single calls and batches (same request, same key)."""
+    return {
+        "model": model,
+        "max_tokens": 16000,
+        # Stable instructions first and cached; the tender's text varies per request.
+        "system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+        "messages": [{"role": "user", "content": user}],
+        "output_config": {
+            "effort": effort,
+            "format": {"type": "json_schema", "schema": strict_schema(schema)},
+        },
+    }
+
+
 class ClaudeModel:
     """Claude via the Anthropic SDK. Needs ANTHROPIC_API_KEY (or another SDK credential)."""
 
@@ -115,17 +132,7 @@ class ClaudeModel:
         schema: type[T],
         rule_based: Callable[[], T] | None = None,
     ) -> ModelResult:
-        params: dict[str, Any] = {
-            "model": self.model,
-            "max_tokens": 16000,
-            # Stable instructions first and cached; the tender's text varies per request.
-            "system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            "messages": [{"role": "user", "content": user}],
-            "output_config": {
-                "effort": self.effort,
-                "format": {"type": "json_schema", "schema": strict_schema(schema)},
-            },
-        }
+        params = build_params(self.model, self.effort, system, user, schema)
         start = time.perf_counter()
         with tracing.span(
             f"chat {self.model}",

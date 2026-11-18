@@ -7,6 +7,7 @@ import json
 import time
 from pathlib import Path
 
+from cimiento_agents.batch import ModelFailed
 from cimiento_agents.coordinator import analyse_tender
 from cimiento_agents.core_client import RecordingCore
 from cimiento_agents.llm import Model
@@ -25,13 +26,20 @@ def run(split_dir: Path, model: Model) -> dict:
         gt = json.loads(gt_path.read_text(encoding="utf-8"))
         if gt["gemelo_de"]:
             continue
-        r = analyse_tender(
-            split_dir / "tenders" / gt["id"], model, core, gt["planning"]["fecha_inicio"], rates
-        )
-        if r.progress is None:
+        expected = {d["actividad"]: d for d in gt["obra"]["desviaciones"]}
+        try:
+            r = analyse_tender(
+                split_dir / "tenders" / gt["id"], model, core, gt["planning"]["fecha_inicio"], rates
+            )
+        except ModelFailed:
+            r = None
+        if r is None or r.progress is None:
+            # no analysis for this tender: every planted delay and alarm counts as missed
+            planted += sum(1 for e in expected.values() if e["retraso_dias"])
+            alarm_total += len(expected)
+            impact_total += 1
             continue
         got = {d.activity: d for d in r.progress.deviations}
-        expected = {d["actividad"]: d for d in gt["obra"]["desviaciones"]}
         for act, e in expected.items():
             g = got.get(act)
             if e["retraso_dias"]:

@@ -43,7 +43,28 @@ def main(argv: list[str] | None = None) -> int:
         "--write-baseline", action="store_true", help="store the current values as baseline"
     )
     sc.add_argument("--label", default="keyless baseline (rule-based reader)")
+    rl = sub.add_parser("real", help="real-model run through the Batch API (eval split)")
+    rl.add_argument("--model", required=True)
+    rl.add_argument(
+        "--confirm", action="store_true", help="actually send the batches (costs money)"
+    )
+    rl.add_argument("--data", type=Path, default=Path("data/generated"))
+    rl.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
+    rl.add_argument("--out", type=Path, default=Path("evals/reports"))
+    rl.add_argument("--prices", type=Path, default=Path("evals/config/prices.json"))
     args = parser.parse_args(argv)
+
+    if args.cmd == "real":
+        from .real import run as run_real
+
+        prices = json.loads(args.prices.read_text(encoding="utf-8"))
+        result = run_real(args.model, args.data, args.recordings, args.out, prices, args.confirm)
+        print(
+            json.dumps(
+                {k: v for k, v in result.items() if k not in ("bid", "plan", "site")}, indent=2
+            )
+        )
+        return 0
 
     if args.cmd == "scorecard":
         from .scorecard import collect, compare, render

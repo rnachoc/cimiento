@@ -14,6 +14,7 @@ import time
 from datetime import date
 from pathlib import Path
 
+from cimiento_agents.batch import ModelFailed
 from cimiento_agents.coordinator import analyse_tender
 from cimiento_agents.core_client import RecordingCore
 from cimiento_agents.llm import Model
@@ -31,9 +32,15 @@ def run(split_dir: Path, model: Model) -> dict:
         if gt["gemelo_de"]:
             continue
         plan = gt["planning"]
-        r = analyse_tender(
-            split_dir / "tenders" / gt["id"], model, core, plan["fecha_inicio"], rates
-        )
+        try:
+            r = analyse_tender(
+                split_dir / "tenders" / gt["id"], model, core, plan["fecha_inicio"], rates
+            )
+        except ModelFailed:
+            rows.append(
+                {"tender": gt["id"], "proposed": False, "valid": False, "model_failed": True}
+            )
+            continue
         row = {"tender": gt["id"], "proposed": r.schedule is not None, "valid": False}
         if r.schedule:
             durations = {a["code"]: a["duration"] for a in r.schedule["activities"]}

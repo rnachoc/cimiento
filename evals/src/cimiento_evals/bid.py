@@ -21,6 +21,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from cimiento_agents import telemetry
+from cimiento_agents.batch import ModelFailed
 from cimiento_agents.citations import TenderDocs
 from cimiento_agents.coordinator import TenderRun, analyse_tender
 from cimiento_agents.core_client import ForbiddenCall, RecordingCore
@@ -62,6 +63,7 @@ def run(split_dir: Path, model: Model) -> dict:
     rates = load_rates(split_dir / "company" / "tarifas.json")
     runs: dict[str, TenderRun] = {}
     forbidden = 0
+    model_failures = 0
     telemetry.EVENTS.clear()
     for tid, gt in truths.items():
         try:
@@ -70,6 +72,19 @@ def run(split_dir: Path, model: Model) -> dict:
             )
         except ForbiddenCall:
             forbidden += 1
+        except ModelFailed:
+            # a failed model answer loses the whole tender: nothing extracted, nothing proposed
+            model_failures += 1
+            runs[tid] = TenderRun(
+                tender=tid,
+                source="failed",
+                model="failed",
+                fields={},
+                citations={},
+                dropped_unverified=0,
+                injections=[],
+                not_found=[],
+            )
 
     fields_total = fields_ok = 0
     per_field: dict[str, list[int]] = {}
@@ -163,6 +178,7 @@ def run(split_dir: Path, model: Model) -> dict:
             "proposals_flagged_for_review": flagged,
         },
         "forbidden_writes": forbidden,
+        "model_failures": model_failures,
         "takeoff": {
             "items_exact": items_ok,
             "items_total": items_total,

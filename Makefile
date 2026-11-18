@@ -115,6 +115,13 @@ eval-retrieval: data-if-missing ## Retrieval hit@1/hit@5 per method; writes eval
 
 # Runs the bid, planning and site evals (keyless unless ANTHROPIC_API_KEY is set) and gates them
 # against evals/baseline.json: harms must be 0, scores may only drop within the tolerance.
+# Real models through the Batch API (half price). Reads ANTHROPIC_API_KEY from .env (git-ignored).
+# Without CONFIRM=1 it only counts the requests; with CONFIRM=1 it spends money.
+MODELS ?= claude-haiku-5-5 claude-sonnet-5-5 claude-opus-5-5
+.PHONY: eval-real
+eval-real: data-if-missing ## Real-model run per model (MODELS=..., CONFIRM=1 to send the batches)
+	@set -a; . ./.env; set +a; 	[ -n "$$ANTHROPIC_API_KEY" ] || [ -z "$(CONFIRM)" ] || { echo "ANTHROPIC_API_KEY is not set in .env"; exit 2; }; 	for m in $(MODELS); do 	  (cd evals && uv run cimiento-evals real --model $$m --data ../data/generated --recordings recordings 	     --out reports --prices config/prices.json $(if $(CONFIRM),--confirm,)) || exit 1; 	done
+
 .PHONY: scorecard
 scorecard: eval-bid eval-plan eval-site ## Gate: harms 0 and scores within tolerance of evals/baseline.json
 	cd evals && uv run cimiento-evals scorecard --reports reports --baseline baseline.json
