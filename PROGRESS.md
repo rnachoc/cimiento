@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 3 a 6 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 7.
+Estado: fases 3 a 7 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 8.
 
 ## Fase 0: repo base
 
@@ -123,5 +123,12 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 ### Deuda conocida
 - Retraso de actividades no iniciadas solo como cota inferior (10 casos en eval); de ahí los fallos de impacto.
 
+## Fase 7: servidor MCP de solo lectura
+
+### Qué se hizo
+- `services/mcp` con el SDK oficial (`mcp` 2.x; `FastMCP` pasó a llamarse `MCPServer`). Ocho herramientas de lectura anotadas como solo lectura; ninguna de escritura.
+- Cliente solo GET con clave ANALYST; enmascarado de precios, rendimientos e instrucciones plantadas.
+- Tests con núcleo simulado (lecturas, anotaciones, enmascarado, escrituras rechazadas en cliente) y prueba contra el núcleo real: lectura completa por MCP y 403 en cada POST con la clave ANALYST. ADR 0008. Ejemplo de configuración en el README.
+
 ## Siguiente paso
-Fase 7: ejecutar prompts/07-mcp.md (y publicar el informe de búsqueda cuando termine).
+Fase 8: ejecutar prompts/08-consola.md, con el diseño llamativo pedido (y publicar el informe de búsqueda cuando termine).

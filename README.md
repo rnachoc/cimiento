@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phases 0 to 6 done** (the phase 3 retrieval report is still running). See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **in progress, phases 0 to 7 done** (the phase 3 retrieval report is still running). See [Progress](#progress). Numbers below are only the ones measured so far.
 
 ## What it does (target scope)
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -42,7 +42,7 @@ Out of scope: reading CAD drawings or images, real integration with MS Project o
 | `services/core` | Java 17, Spring Boot 3.5, JPA, Flyway, Postgres | done |
 | `services/agents` | Python 3.12, FastAPI, pgvector, fastembed, Anthropic SDK | search and tender agents done |
 | `evals` | Python 3.12 | retrieval and bid evals |
-| `services/mcp` | Python, official MCP SDK | planned (phase 7) |
+| `services/mcp` | Python, official MCP SDK (2.x) | done (read-only) |
 | `web/console` | Angular | planned (phase 8) |
 | Kafka outbox and consumers | Kafka (KRaft) | planned (phase 9) |
 | Telemetry and cost report | OpenTelemetry, Grafana | planned (phase 10) |
@@ -65,6 +65,25 @@ make eval-retrieval       # search eval; first run downloads about 0.8 GB of loc
 ```
 
 `make demo` (end to end, no API key) arrives in phase 12.
+
+## Use it from an assistant (MCP)
+The read-only MCP server exposes projects, tenders, schedules with critical path, proposals with citations, the audit log and document search. It uses the ANALYST key, so the core refuses any write; prices and planted instructions are masked. Example configuration (Claude Desktop or Claude Code):
+
+```json
+{
+  "mcpServers": {
+    "cimiento": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/cimiento/services/mcp", "run", "cimiento-mcp"],
+      "env": {
+        "CIMIENTO_CORE_URL": "http://localhost:8080",
+        "CIMIENTO_ANALYST_KEY": "<your analyst key>",
+        "CIMIENTO_SEARCH_URL": "http://localhost:8001"
+      }
+    }
+  }
+}
+```
 
 ## Results so far
 
@@ -138,7 +157,7 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 4b | Remaining tender agents | done |
 | 5 | Planner agent | done |
 | 6 | Site progress and reports | done |
-| 7 | Read-only MCP server | planned |
+| 7 | Read-only MCP server | done |
 | 8 | Review console | planned |
 | 9 | Events through Kafka | planned |
 | 10 | Telemetry and cost report | planned |
