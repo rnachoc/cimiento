@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fase 2 terminada (2026-11-18). Siguiente: fase 3.
+Estado: fases 3, 4a y 4b terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 5.
 
 ## Fase 0: repo base
 
@@ -65,5 +65,37 @@ Estado: fase 2 terminada (2026-11-18). Siguiente: fase 3.
 - Las claves por rol identifican el rol, no a la persona: todas las decisiones constan como REVIEWER.
 - Sin paginación en los listados (`/api/proposals`, `/api/audit`).
 
+## Fase 3: ingesta y búsqueda
+
+### Qué se hizo
+- Ingesta de PDF (pypdf, sin pies de página) y texto en fragmentos por cláusula y página; mismos fragmentos desde PDF y texto (test).
+- Cuatro métodos: BM25 propio, vectores (MiniLM multilingüe en pgvector, base propia `cimiento_search`), híbrido RRF y reordenador bge-reranker-v2-m3-int8. `POST /search` con el rango de cada etapa y "no consta".
+- `make eval-retrieval`: preguntas sintéticas desde la verdad terreno, redacción distinta en dev y eval, método y umbrales elegidos en dev. ADR 0004.
+- Tests sin descargar modelos (embedder por hash y reordenador por solapamiento, nunca usados para medir calidad); pgvector comparado con la versión en memoria contra un Postgres real.
+
+### Pendiente
+- El informe `evals/reports/retrieval.md` (la evaluación con modelos reales tarda 1 a 2 horas en CPU; en curso).
+
+## Fases 4a y 4b: agentes de licitación
+
+### Qué se hizo
+- Capa de modelo con fuente etiquetada: Claude (SDK oficial, salida estructurada, caché del prompt de sistema, grabación con `CIMIENTO_RECORD=true`), respuestas grabadas, lector por reglas sin clave.
+- Coordinador en código; cliente del núcleo con lista permitida; telemetría que rechaza texto; citas verificadas en la página; detector de instrucciones escrito solo con dev.
+- Agentes: analista de pliego, mediciones, presupuesto (lo calcula el núcleo), riesgos, bid/no-bid con reglas, borrador de memoria técnica, preguntas y respuestas con cita o "no consta".
+- `make eval-bid` con informe en `evals/reports/bid.md`. ADR 0005.
+- Verificado: 46 tests de agentes, prueba de punta a punta contra el núcleo real (11 propuestas aceptadas, ninguna falla reglas, auditoría íntegra).
+
+### Resultados (eval, línea base sin clave)
+Campos 266/390; citas verificadas 1506/1506; instrucciones detectadas 2/3, obedecidas 0, falsos positivos 0/30; escrituras indebidas 0; partidas exactas 332/380; presupuestos exactos 26/30; contradicciones 3/6 sin falsos positivos.
+
+### Decisiones
+- Sin `fallbacks` del servidor: una respuesta de otro modelo falsearía la comparación de modelos.
+- La licitación solo se registra si se encuentra el plazo (el núcleo lo exige).
+
+### Deuda conocida
+- 4 de 30 licitaciones de eval sin plazo encontrado: no corre nada más para ellas.
+- El lector por reglas no generaliza a redacciones nuevas (68 % en eval frente a 100 % en dev).
+- Las recomendaciones bid/no-bid no tienen verdad terreno.
+
 ## Siguiente paso
-Fase 3: ejecutar prompts/03-busqueda.md
+Fase 5: ejecutar prompts/05-planificador.md (y publicar el informe de búsqueda cuando termine).

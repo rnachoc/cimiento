@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phase 3 of 12** (search and retrieval eval). See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **in progress, phases 0 to 4 done except the retrieval report** (phase 3 eval running). See [Progress](#progress). Numbers below are only the ones measured so far.
 
 ## What it does (target scope)
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -40,8 +40,8 @@ Out of scope: reading CAD drawings or images, real integration with MS Project o
 |---|---|---|
 | `data/generator` | Python 3.12, networkx, fpdf2 | done |
 | `services/core` | Java 17, Spring Boot 3.5, JPA, Flyway, Postgres | done |
-| `services/agents` | Python 3.12, FastAPI, pgvector, fastembed | search done; agents in progress |
-| `evals` | Python 3.12 | retrieval eval in progress |
+| `services/agents` | Python 3.12, FastAPI, pgvector, fastembed, Anthropic SDK | search and tender agents done |
+| `evals` | Python 3.12 | retrieval and bid evals |
 | `services/mcp` | Python, official MCP SDK | planned (phase 7) |
 | `web/console` | Angular | planned (phase 8) |
 | Kafka outbox and consumers | Kafka (KRaft) | planned (phase 9) |
@@ -58,6 +58,7 @@ cp .env.example .env      # then replace the placeholder keys (the core refuses 
 make up                   # Postgres with pgvector, Kafka
 make data                 # synthetic tenders: dev (seed 42) and eval (seed 1337)
 make test                 # every test suite (the core uses Testcontainers, so Docker must run)
+make eval-bid             # tender agents eval (keyless baseline without ANTHROPIC_API_KEY)
 make eval-retrieval       # search eval; first run downloads about 0.8 GB of local models
 ```
 
@@ -70,6 +71,23 @@ Measured by `make test` (`GroundTruthTest`) on all 66 generated tenders of both 
 
 ### Retrieval
 Pending: the first run of `make eval-retrieval` is in progress. The table will be published here as measured, with the caveat that questions are synthetic.
+
+### Tender agents, keyless baseline
+Measured by `make eval-bid` on the eval split (30 tenders plus 3 clean twins, held-out wording). **Source: rule-based reader, no model.** This is a floor to compare models against, not a model result. Full report: [evals/reports/bid.md](evals/reports/bid.md).
+
+| Metric | Eval split |
+|---|---|
+| Fields extracted correctly (13 per tender) | 68.2 % (266/390) |
+| Citations verified on their page | 100 % (1506/1506) |
+| Planted instructions detected | 2/3 |
+| Planted instructions obeyed (twin comparison) | 0 |
+| Clean tenders with a false injection report | 0/30 |
+| Forbidden writes (calls outside the allow list) | 0 |
+| Measured items with the exact quantity | 87.4 % (332/380) |
+| Budgets equal to the expected total | 26/30 |
+| Planted contradictions found | 3/6 (0 false) |
+
+The reader was written against dev wording, where it scores 100 % on every line by construction; the gap to eval is the point of the held-out split. In 4 of 30 eval tenders it misses the contract term, the core cannot register the tender, and nothing else runs for it (all 48 missing quantities come from those 4).
 
 ### Agents with Claude
 Not measured yet. Real-model runs happen once, in phase 11, and will be reported separately from the keyless baseline.
@@ -87,9 +105,9 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 0 | Repo, Makefile, CI with gitleaks, ADR 0001 | done |
 | 1 | Synthetic data generator with ground truth | done |
 | 2 | Java core: rules, CPM, audit chain, roles | done |
-| 3 | Ingestion and search with citations | in progress |
-| 4a | Agent infrastructure and bid analyst | in progress |
-| 4b | Remaining tender agents | planned |
+| 3 | Ingestion and search with citations | done; retrieval report pending |
+| 4a | Agent infrastructure and bid analyst | done |
+| 4b | Remaining tender agents | done |
 | 5 | Planner agent | planned |
 | 6 | Site progress and reports | planned |
 | 7 | Read-only MCP server | planned |
@@ -104,6 +122,8 @@ Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 ## Known limitations
 - Documents come from templates. Held-out wording reduces overfitting to them but does not remove it.
 - The planning ground truth follows the generator's own productivity table and dependency rules, so schedule metrics measure agreement with those rules, not with real sites.
+- Without an API key the agents use a rule-based reader; its numbers are a baseline, not model quality.
+- If the contract term is not found, the tender is not registered and its other agents do not run.
 - Search runs within one tender's documents (tens of chunks each), which is easier than searching a large archive.
 - Role keys identify a role, not a person: every decision is recorded as REVIEWER.
 - Local development is tested on WSL2 (Ubuntu) and CI on Ubuntu; native Windows `make` is not supported.
