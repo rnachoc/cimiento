@@ -1,0 +1,4 @@
+# Confirmed false positives (fingerprint per finding). Never add a real secret here.
+# A fixed test key "analyst-test-key-0123456789" in the MCP tests of commit 7dbdd31; not a credential
+# of any system. The test now generates a random key per run.
+7dbdd319ff07327942169a01013b92a19f36658e:services/mcp/tests/test_server.py:generic-api-key:12
