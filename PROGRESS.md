@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 7 terminadas (2026-11-18). Siguiente: fase 8.
+Estado: fases 0 a 8 terminadas (2026-11-18). Siguiente: fase 9.
 
 ## Fase 0: repo base
 
@@ -133,5 +133,18 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Cliente solo GET con clave ANALYST; enmascarado de precios, rendimientos e instrucciones plantadas.
 - Tests con núcleo simulado (lecturas, anotaciones, enmascarado, escrituras rechazadas en cliente) y prueba contra el núcleo real: lectura completa por MCP y 403 en cada POST con la clave ANALYST. ADR 0008. Ejemplo de configuración en el README.
 
+## Fase 8: consola de revisión
+
+### Qué se hizo
+- Angular 22 (standalone, signals, sin zone.js): bandeja con portada y carruseles por tipo, detalle con hechos (Gantt con ruta crítica), reglas, citas, auditoría y formulario aprobar/corregir/rechazar. Diseño oscuro y cinematográfico pedido por el usuario; accesibilidad (teclado, foco, contraste, movimiento reducido).
+- nginx: añade la clave REVIEWER y sobrescribe la del navegador; CSP estricta con nonce por petición para los estilos de Angular.
+- Dockerfiles de núcleo y consola; perfil `app` en compose; `make e2e` y trabajo de CI con Chromium real.
+- Verificado: 6 tests de componentes (Vitest); e2e 2/2 (aprobación ejecutada en el núcleo, 0 violaciones de CSP, clave falsificada rechazada con 403); capturas revisadas a mano (corregidos scroll, espaciado de reglas, cabecera móvil, formulario fijo que tapaba contenido). ADR 0009.
+- Errores propios encontrados y corregidos: la limpieza del script e2e no apagaba la pila (ruta relativa tras `cd`).
+
+### Deuda conocida
+- Cualquiera que llegue a nginx actúa como REVIEWER (sin autenticación de personas).
+- Node 24 instalado en `~/.local/node` dentro de WSL (sin sudo).
+
 ## Siguiente paso
-Fase 8: ejecutar prompts/08-consola.md, con el diseño llamativo pedido .
+Fase 9: ejecutar prompts/09-eventos.md.
