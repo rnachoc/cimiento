@@ -13,11 +13,12 @@ The console showed proposals one by one, but nothing tracked where each tender s
 3. **The portfolio is computed, not stored**: `GET /api/portfolio` derives the submission deadline from the latest live bid analysis (`fecha_presentacion`, flagged when not yet approved) and the recommendation from the latest bid/no-bid report. Nothing a model wrote becomes a stored fact without review.
 4. **Exports are code, not model output.** `GET /api/proposals/{id}/export` returns:
    - a schedule as Microsoft Project XML (MSPDI): tasks with the core's CPM dates on the Monday to Friday calendar, finish-to-start links with lag, critical flag and total float;
-   - a budget as FIEBDC-3 (BC3), the Spanish budget exchange format: a root concept, its breakdown and one priced concept per line, in the Windows-1252 code page with CR LF line ends.
+   - a budget as FIEBDC-3/2016 (BC3), the Spanish budget exchange format, written against the published specification: ~V with version date, ANSI character set and information type 2 (budget); ~K with the format's default decimals in both its short and complete fields; a root concept (`OBRA##`) holding one chapter (`C01#`) holding one work item per line; quantities and prices with exactly the 2 decimals declared in ~K; Windows-1252, CR LF and the ASCII 26 end of file. A quantity that needs more decimals is refused rather than rounded.
    Proposals that failed the rules or were rejected cannot be exported; a pending one downloads with `-borrador` in its name.
 5. The console gets a **Cartera** view (columns by stage, deadline countdown, pending reviews, moves with a reason when required) and download buttons on schedule and budget proposals. The MCP server gets a read-only `get_portfolio` tool.
 
 ## Consequences
 - No new dependency: XML is built with the JDK, BC3 is plain text.
-- MSPDI and BC3 are checked by unit tests against the core's own CPM and pricing; they are not yet opened in Microsoft Project or a BC3 reader in CI. Importing them back is out of scope.
+- MSPDI and BC3 are checked by unit tests against the core's own CPM and pricing and, for BC3, against the record layouts of the FIEBDC-3/2016 specification (including a reader-side total check). Neither file is opened in Microsoft Project or a BC3 program in CI. Importing them back is out of scope.
+- v1.1.0 wrote a ~K record with seven decimal counts instead of eight and no end-of-file mark; fixed in v1.1.1.
 - Stage moves are not undone: a wrong move is fixed by the next allowed move, and the history keeps both.

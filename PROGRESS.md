@@ -197,6 +197,9 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Consola: vista Cartera (columnas por etapa, cuenta atrás, pendientes, motivo cuando hace falta, errores de reglas del núcleo), navegación Bandeja/Cartera, botones de descarga. MCP: herramienta `get_portfolio`.
 - Tests: PipelineTest (5), ExportsTest (4), 2 de integración nuevos, 4 de consola, e2e ampliado (descarga del XML y cambio de etapa en un Chromium real). ADR 0012.
 
+### Corrección posterior (v1.1.1)
+- BC3 revisado contra la especificación FIEBDC-3/2016: ~K tenía 7 contadores de decimales en vez de 8 y faltaba el fin de archivo (ASCII 26). Ahora: ~V con fecha y tipo 2, ~K completo, raíz `OBRA##` con capítulo `C01#`, decimales exactos, códigos de 20 caracteres como máximo y resúmenes de 64. Tests nuevos con las líneas exactas del formato y la comprobación de totales que haría un lector. Sigue sin abrirse en Presto u otro programa.
+
 ### Ideas siguientes (no hechas)
 - Consulta en lenguaje natural desde la consola (el agente de preguntas existe; falta servirlo con su búsqueda en Docker sin descargar 0,8 GB en la demo).
 - Revisión previa a la presentación: lista de lo que pide el pliego frente a lo preparado.
