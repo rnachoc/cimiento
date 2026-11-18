@@ -1,0 +1,117 @@
+/* Cimiento review console: dark cinematic theme. System fonts only (strict CSP, no remote assets). */
+:root {
+  --bg: #07080c;
+  --bg-2: #0d1017;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.10);
+  --text: #f5f6fa;
+  --muted: #a3a9b8;            /* 7.9:1 on --bg */
+  --accent: #53fc18;           /* signal green */
+  --accent-2: #7c5cff;         /* violet */
+  --accent-3: #ff3d71;         /* alert */
+  --warn: #ffb020;
+  --ok: #2ee59d;
+  --radius: 18px;
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+body::before {
+  /* soft aurora behind everything */
+  content: "";
+  position: fixed;
+  inset: -20vh -10vw auto -10vw;
+  height: 70vh;
+  background:
+    radial-gradient(40% 60% at 20% 30%, rgba(124, 92, 255, 0.28), transparent 70%),
+    radial-gradient(35% 50% at 75% 20%, rgba(83, 252, 24, 0.14), transparent 70%),
+    radial-gradient(30% 40% at 55% 60%, rgba(255, 61, 113, 0.12), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: -1;
+  animation: aurora 18s var(--ease) infinite alternate;
+}
+
+@keyframes aurora {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(3vw, 2vh, 0) scale(1.08); }
+}
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+}
+.pill.ok { color: #04140c; background: var(--ok); border-color: transparent; }
+.pill.warn { color: #1d1300; background: var(--warn); border-color: transparent; }
+.pill.fail { color: #fff; background: var(--accent-3); border-color: transparent; }
+.pill.skip { color: var(--muted); }
+
+.btn {
+  appearance: none; border: 0; cursor: pointer;
+  padding: 14px 26px; border-radius: 999px;
+  font: inherit; font-weight: 700; letter-spacing: 0.01em;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
+}
+.btn:hover { transform: translateY(-2px) scale(1.02); }
+.btn:active { transform: translateY(0) scale(0.98); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-approve { background: var(--accent); color: #061200; box-shadow: 0 10px 40px rgba(83, 252, 24, 0.35); }
+.btn-correct { background: var(--accent-2); color: #fff; box-shadow: 0 10px 40px rgba(124, 92, 255, 0.35); }
+.btn-reject { background: transparent; color: var(--text); border: 1px solid rgba(255, 61, 113, 0.7); }
+.btn-ghost { background: var(--surface-2); color: var(--text); }
+
+.eyebrow {
+  text-transform: uppercase; letter-spacing: 0.22em; font-size: 0.75rem; font-weight: 700;
+  color: var(--accent);
+}
+
+.reveal { animation: reveal 0.7s var(--ease) both; }
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
