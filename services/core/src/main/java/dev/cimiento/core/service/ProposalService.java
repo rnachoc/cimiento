@@ -194,7 +194,8 @@ public class ProposalService {
                     ScheduleEntity entity = schedules.save(new ScheduleEntity(tender.getId(), p.getId(),
                             cpm.duration(), tender.getPlannedStart(),
                             WorkCalendar.workday(tender.getPlannedStart(), cpm.duration() - 1),
-                            WorkCalendar.deadline(tender.getPlannedStart(), tender.getContractTermMonths())));
+                            tender.getContractTermMonths() == null ? null
+                                    : WorkCalendar.deadline(tender.getPlannedStart(), tender.getContractTermMonths())));
                     Map<String, String> names = s.activities().stream().collect(Collectors.toMap(
                             Cpm.ActivityInput::code, a -> a.name() == null ? a.code() : a.name()));
                     for (Cpm.ActivityTimes t : cpm.activities().values()) {
@@ -206,7 +207,7 @@ public class ProposalService {
                     }
                     details.put("scheduleId", entity.getId());
                     details.put("durationDays", cpm.duration());
-                    details.put("exceedsTerm", entity.isExceedsTerm());
+                    details.put("exceedsTerm", entity.getExceedsTerm());
                 }
                 case PROGRESS_UPDATE -> {
                     Payloads.Progress pr = mapper.treeToValue(payload, Payloads.Progress.class);

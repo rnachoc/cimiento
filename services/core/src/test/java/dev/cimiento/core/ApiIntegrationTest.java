@@ -207,6 +207,26 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void tenderWithUnknownTermStillGetsAReviewedSchedule() throws Exception {
+        var r = call("POST", "/api/tenders", AGENT, "{'projectCode':'P-1','code':'T-NOTERM-" + UUID.randomUUID()
+                + "','title':'Sin plazo','plannedStart':'2027-01-04'}", null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contractTermMonths").value(org.hamcrest.Matchers.nullValue()));
+        long noTerm = body(r).get("id").asLong();
+        String sched = schedule("").replace("'tenderId':" + tenderId, "'tenderId':" + noTerm);
+        long id = body(call("POST", "/api/proposals", AGENT, sched, UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
+                .andExpect(jsonPath("$.routingReasons").value(org.hamcrest.Matchers.hasItem("CONTRACT_TERM"))))
+                .get("id").asLong();
+        call("POST", "/api/proposals/" + id + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
+        call("GET", "/api/tenders/" + noTerm + "/schedule", ANALYST, null, null)
+                .andExpect(jsonPath("$.durationDays").value(15))
+                .andExpect(jsonPath("$.contractDeadline").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.exceedsTerm").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
     void tenderCreationIsIdempotentByCode() throws Exception {
         String t = "{'projectCode':'P-1','code':'T-IDEM','title':'A','contractTermMonths':3,'plannedStart':'2027-01-04'}";
         call("POST", "/api/tenders", AGENT, t, null);

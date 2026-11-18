@@ -173,6 +173,16 @@ class RuleEngineTest {
     }
 
     @Test
+    void unknownContractTermWarnsAndForcesReview() {
+        var e = ENGINE.evaluate(ProposalType.SCHEDULE, json("{'activities':[{'code':'A','duration':5}],'links':[]}"),
+                CITE, List.of(), new TenderContext(LocalDate.of(2027, 1, 4), null));
+        assertThat(outcome(e, "CONTRACT_TERM")).isEqualTo(Outcome.WARN);
+        assertThat(e.failed()).isFalse();
+        assertThat(e.route()).isEqualTo(Route.HUMAN);
+        assertThat(e.reasons()).contains("CONTRACT_TERM");
+    }
+
+    @Test
     void termCheckNeedsAMondayStart() {
         var e = ENGINE.evaluate(ProposalType.SCHEDULE, json("{'activities':[{'code':'A','duration':1}],'links':[]}"),
                 CITE, List.of(), new TenderContext(LocalDate.of(2027, 1, 5), 2));

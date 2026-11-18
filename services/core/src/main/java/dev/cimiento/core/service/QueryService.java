@@ -55,7 +55,7 @@ public class QueryService {
                 .sorted(Comparator.comparingInt(ScheduleActivity::getEs).thenComparing(ScheduleActivity::getCode))
                 .map(ScheduleActivity::getCode).toList();
         return new ScheduleView(s.getId(), s.getTenderId(), s.getProposalId(), s.getDurationDays(), s.getStartDate(),
-                s.getEndDate(), s.getContractDeadline(), s.isExceedsTerm(), critical,
+                s.getEndDate(), s.getContractDeadline(), s.getExceedsTerm(), critical,
                 acts.stream().map(a -> new ActivityView(a.getCode(), a.getName(), a.getDuration(), a.getEs(),
                         a.getEf(), a.getLs(), a.getLf(), a.getTotalFloat(), a.isCritical())).toList(),
                 links.findByScheduleIdOrderByFromCodeAscToCodeAsc(s.getId()).stream()

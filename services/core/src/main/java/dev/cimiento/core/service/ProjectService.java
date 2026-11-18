@@ -47,7 +47,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public Created<Tender> createTender(Role actor, String projectCode, String code, String title, int termMonths,
+    public Created<Tender> createTender(Role actor, String projectCode, String code, String title, Integer termMonths,
                                         LocalDate plannedStart) {
         Project project = projects.findByCode(projectCode)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "project " + projectCode + " not found"));
@@ -55,15 +55,18 @@ public class ProjectService {
         if (existing.isPresent()) {
             Tender t = existing.get();
             boolean same = t.getProject().getId().equals(project.getId()) && t.getTitle().equals(title)
-                    && t.getContractTermMonths() == termMonths && t.getPlannedStart().equals(plannedStart);
+                    && java.util.Objects.equals(t.getContractTermMonths(), termMonths) && t.getPlannedStart().equals(plannedStart);
             if (!same) {
                 throw new ApiException(HttpStatus.CONFLICT, "tender " + code + " exists with other data");
             }
             return new Created<>(t, false);
         }
         Tender t = tenders.save(new Tender(project, code, title, termMonths, plannedStart));
-        audit.append(actor, "TENDER_CREATED", "tender", t.getId(),
-                Map.of("code", code, "project", projectCode, "contractTermMonths", termMonths));
+        Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("code", code);
+        details.put("project", projectCode);
+        details.put("contractTermMonths", termMonths);
+        audit.append(actor, "TENDER_CREATED", "tender", t.getId(), details);
         return new Created<>(t, true);
     }
 

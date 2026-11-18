@@ -33,11 +33,11 @@ public class ScheduleEntity {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    @Column(name = "contract_deadline", nullable = false)
+    @Column(name = "contract_deadline")
     private LocalDate contractDeadline;
 
-    @Column(name = "exceeds_term", nullable = false)
-    private boolean exceedsTerm;
+    @Column(name = "exceeds_term")
+    private Boolean exceedsTerm;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
@@ -53,7 +53,8 @@ public class ScheduleEntity {
         this.startDate = startDate;
         this.endDate = endDate;
         this.contractDeadline = contractDeadline;
-        this.exceedsTerm = endDate.isAfter(contractDeadline);
+        // unknown contract term: no deadline and no verdict
+        this.exceedsTerm = contractDeadline == null ? null : endDate.isAfter(contractDeadline);
     }
 
     public Long getId() {
@@ -84,7 +85,7 @@ public class ScheduleEntity {
         return contractDeadline;
     }
 
-    public boolean isExceedsTerm() {
+    public Boolean getExceedsTerm() {
         return exceedsTerm;
     }
 }

@@ -24,10 +24,10 @@ public final class ApiDtos {
     }
 
     public record CreateTender(@NotBlank String projectCode, @NotBlank String code, @NotBlank String title,
-                               @Min(1) int contractTermMonths, @NotNull LocalDate plannedStart) {
+                               @Min(1) Integer contractTermMonths, @NotNull LocalDate plannedStart) {
     }
 
-    public record TenderView(Long id, String projectCode, String code, String title, int contractTermMonths,
+    public record TenderView(Long id, String projectCode, String code, String title, Integer contractTermMonths,
                              LocalDate plannedStart) {
     }
 
@@ -52,7 +52,7 @@ public final class ApiDtos {
     }
 
     public record ScheduleView(Long id, Long tenderId, Long proposalId, int durationDays, LocalDate startDate,
-                               LocalDate endDate, LocalDate contractDeadline, boolean exceedsTerm,
+                               LocalDate endDate, LocalDate contractDeadline, Boolean exceedsTerm,
                                List<String> critical, List<ActivityView> activities, List<LinkView> links) {
     }
 

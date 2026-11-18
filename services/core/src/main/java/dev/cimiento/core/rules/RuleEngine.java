@@ -50,7 +50,8 @@ public final class RuleEngine {
     public static final String SIGNAL_INJECTION = "INJECTION_DETECTED";
     private static final BigDecimal CENT = new BigDecimal("0.01");
 
-    public record TenderContext(LocalDate plannedStart, int contractTermMonths) {
+    /** {@code contractTermMonths} is null when the term is unknown. */
+    public record TenderContext(LocalDate plannedStart, Integer contractTermMonths) {
     }
 
     public record Evaluation(List<RuleResult> results, Route route, List<String> reasons,
@@ -303,6 +304,10 @@ public final class RuleEngine {
             return RuleResult.fail("CONTRACT_TERM", "planned start must be a Monday", Map.of());
         }
         LocalDate end = WorkCalendar.workday(tender.plannedStart(), cpm.duration() - 1);
+        if (tender.contractTermMonths() == null) {
+            return RuleResult.warn("CONTRACT_TERM", "contract term unknown; schedule ends " + end,
+                    Map.of("end", end.toString(), "termKnown", false));
+        }
         LocalDate deadline = WorkCalendar.deadline(tender.plannedStart(), tender.contractTermMonths());
         Map<String, Object> details = Map.of("end", end.toString(), "deadline", deadline.toString(),
                 "exceeds", end.isAfter(deadline));

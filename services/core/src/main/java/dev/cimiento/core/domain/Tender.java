@@ -28,8 +28,8 @@ public class Tender {
     @Column(nullable = false)
     private String title;
 
-    @Column(name = "contract_term_months", nullable = false)
-    private int contractTermMonths;
+    @Column(name = "contract_term_months")
+    private Integer contractTermMonths;
 
     @Column(name = "planned_start", nullable = false)
     private LocalDate plannedStart;
@@ -40,7 +40,7 @@ public class Tender {
     protected Tender() {
     }
 
-    public Tender(Project project, String code, String title, int contractTermMonths, LocalDate plannedStart) {
+    public Tender(Project project, String code, String title, Integer contractTermMonths, LocalDate plannedStart) {
         this.project = project;
         this.code = code;
         this.title = title;
@@ -64,7 +64,8 @@ public class Tender {
         return title;
     }
 
-    public int getContractTermMonths() {
+    /** Null when the term was not found in the documents. */
+    public Integer getContractTermMonths() {
         return contractTermMonths;
     }
 
