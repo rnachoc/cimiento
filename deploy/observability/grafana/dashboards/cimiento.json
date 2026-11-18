@@ -1,0 +1,50 @@
+{
+  "uid": "cimiento-agents",
+  "title": "Cimiento · agents",
+  "tags": ["cimiento"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Proposals sent to the core",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(cimiento_proposals_submitted_total)"}]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Model calls",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(gen_ai_client_operation_duration_seconds_count)"}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Tokens (all models)",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(gen_ai_client_token_usage_sum)"}]
+    },
+    {
+      "id": 4, "type": "barchart", "title": "Proposals by type",
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (cimiento_proposal_type) (cimiento_proposals_submitted_total)",
+                   "format": "table", "instant": true}]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Tokens by model and type",
+      "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "legendFormat": "{{gen_ai_request_model}} {{gen_ai_token_type}}",
+                   "expr": "sum by (gen_ai_request_model, gen_ai_token_type) (gen_ai_client_token_usage_sum)"}]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Model call duration, p95 (s)",
+      "gridPos": {"x": 0, "y": 13, "w": 24, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "legendFormat": "{{gen_ai_request_model}}",
+                   "expr": "histogram_quantile(0.95, sum by (le, gen_ai_request_model) (rate(gen_ai_client_operation_duration_seconds_bucket[5m])))"}]
+    }
+  ]
+}

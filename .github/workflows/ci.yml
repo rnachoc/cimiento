@@ -54,6 +54,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: make data
       - run: ./scripts/flow.sh
+      # every tender processed with telemetry on; fails if any span carries document text
+      - run: make cost-report
+      - run: ./scripts/observability.sh
 
   gitleaks:
     runs-on: ubuntu-24.04

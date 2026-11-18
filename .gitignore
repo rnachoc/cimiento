@@ -40,3 +40,4 @@ Thumbs.db
 
 # Per-question eval outcomes (large, regenerated)
 evals/reports/*.jsonl
+evals/reports/spans.jsonl

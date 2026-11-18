@@ -91,6 +91,18 @@ eval-bid: data-if-missing ## Bid analyst: fields, citations, planted instruction
 eval-site: data-if-missing ## Site progress: planted delays, alarms, reports; writes evals/reports/site.md
 	cd evals && uv run cimiento-evals site --data ../data/generated --out reports --recordings recordings
 
+# Spans of a bid eval run -> tokens and cost per model (priced models only) + no-content check.
+# OpenTelemetry collector, Prometheus, Jaeger and Grafana; telemetry from a few tenders; checks.
+.PHONY: observability
+observability: data-if-missing ## Observability stack check (KEEP=1 leaves Grafana running on :23000)
+	./scripts/observability.sh
+
+.PHONY: cost-report
+cost-report: data-if-missing ## Tokens and cost per model from spans; fails if a span carries document text
+	rm -f evals/reports/spans.jsonl
+	cd evals && CIMIENTO_TRACE_FILE=$(CURDIR)/evals/reports/spans.jsonl uv run cimiento-evals bid --data ../data/generated --out reports --recordings recordings >/dev/null
+	cd evals && uv run cimiento-evals cost --spans reports/spans.jsonl --prices config/prices.json --data ../data/generated --out reports
+
 .PHONY: eval-plan
 eval-plan: data-if-missing ## Planner: valid schedules, duration error, critical path; writes evals/reports/plan.md
 	cd evals && uv run cimiento-evals plan --data ../data/generated --out reports --recordings recordings
