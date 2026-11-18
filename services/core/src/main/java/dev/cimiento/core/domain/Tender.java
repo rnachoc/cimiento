@@ -83,6 +83,10 @@ public class Tender {
         return plannedStart;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
     public TenderStage getStage() {
         return stage;
     }

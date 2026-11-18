@@ -55,6 +55,10 @@ public class TenderStageChange {
         return id;
     }
 
+    public Long getTenderId() {
+        return tenderId;
+    }
+
     public TenderStage getFromStage() {
         return fromStage;
     }

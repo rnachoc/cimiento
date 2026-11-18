@@ -188,12 +188,25 @@ public final class RuleEngine {
     private static Progress checkProgress(Progress p) {
         require(p.week() > 0, "week must be positive");
         require(p.rows() != null && !p.rows().isEmpty(), "rows required");
-        for (ProgressRow r : p.rows()) {
+        checkRows(p.rows());
+        java.util.Set<Integer> weeks = new java.util.HashSet<>();
+        for (Payloads.ProgressWeek w : p.historyOrEmpty()) {
+            require(w != null && w.week() > 0 && w.week() < p.week(), "history weeks must come before the status week");
+            require(weeks.add(w.week()), "history week " + w.week() + " repeated");
+            require(w.rows() != null, "history rows required");
+            checkRows(w.rows());
+        }
+        return p;
+    }
+
+    private static void checkRows(List<ProgressRow> rows) {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (ProgressRow r : rows) {
             require(r != null && r.activity() != null, "activity required");
+            require(seen.add(r.activity()), "activity " + r.activity() + " repeated in a week");
             require(r.plannedPct() >= 0 && r.plannedPct() <= 100 && r.actualPct() >= 0 && r.actualPct() <= 100,
                     "percentages must be between 0 and 100");
         }
-        return p;
     }
 
     private static RiskSignal checkRisk(RiskSignal r) {

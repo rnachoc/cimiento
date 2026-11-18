@@ -387,4 +387,57 @@ class ApiIntegrationTest {
         call("GET", "/api/proposals/" + failed + "/export", ANALYST, null, null).andExpect(status().isConflict());
         call("GET", "/api/proposals/9999999/export", ANALYST, null, null).andExpect(status().isNotFound());
     }
+
+    @Test
+    void siteViewComesFromTheLatestScheduleAndProgress() throws Exception {
+        call("GET", "/api/tenders/" + tenderId + "/site", ANALYST, null, null).andExpect(status().isNotFound());
+        call("POST", "/api/proposals", AGENT, schedule(""), UUID.randomUUID().toString());
+        String progress = "{'tenderId':" + tenderId + ",'type':'PROGRESS_UPDATE','citations':[{'document':"
+                + "'obra/avance_semanal.csv','page':1,'text':'2;2027-01-15;A01'}],'payload':{'week':2,'rows':["
+                + "{'activity':'A01','plannedPct':100,'actualPct':100},{'activity':'A02','plannedPct':50,'actualPct':20}],"
+                + "'history':[{'week':1,'rows':[{'activity':'A01','plannedPct':100,'actualPct':80}]}]}}";
+        call("POST", "/api/proposals", AGENT, progress, UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"));
+        var site = body(call("GET", "/api/tenders/" + tenderId + "/site", ANALYST, null, null)
+                .andExpect(status().isOk()));
+        assertThat(site.get("statusWeek").asInt()).isEqualTo(2);
+        assertThat(site.get("cutDate").asText()).isEqualTo("2027-01-15");
+        assertThat(site.get("progressApproved").asBoolean()).isFalse();
+        JsonNode a = site.get("analysis");
+        assertThat(a.get("curve")).hasSize(2);
+        // A02 started at day 5 and should be at 50 %; it is at 20 % of 10 days: 3 days late on the critical path
+        JsonNode a02 = a.get("deviations").get(1);
+        assertThat(a02.get("activity").asText()).isEqualTo("A02");
+        assertThat(a02.get("delayDays").asInt()).isEqualTo(3);
+        assertThat(a02.get("alarm").asBoolean()).isTrue();
+        assertThat(a.get("impactDays").asInt()).isEqualTo(3);
+        assertThat(site.get("plannedEnd").asText()).isEqualTo("2027-01-22");
+        assertThat(site.get("forecastEnd").asText()).isEqualTo("2027-01-27");
+
+        // history weeks must come before the status week
+        String bad = progress.replace("'history':[{'week':1", "'history':[{'week':5");
+        call("POST", "/api/proposals", AGENT, bad, UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.status").value("RULES_FAILED"));
+    }
+
+    @Test
+    void dashboardAndPortfolioItemAreComputedByTheCore() throws Exception {
+        String code = jdbc.queryForObject("SELECT code FROM rate ORDER BY code LIMIT 1", String.class);
+        String total = jdbc.queryForObject("SELECT unit_price * 4 FROM rate WHERE code = ?",
+                java.math.BigDecimal.class, code).setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+        call("POST", "/api/proposals", AGENT, "{'tenderId':" + tenderId + ",'type':'BUDGET','citations':[{'document':"
+                + "'mediciones','page':1,'text':'x'}],'payload':{'lines':[{'code':'" + code + "','quantity':4}],"
+                + "'claimedTotal':'" + total + "'}}", UUID.randomUUID().toString());
+        var item = body(call("GET", "/api/portfolio/" + tenderId, ANALYST, null, null).andExpect(status().isOk()));
+        assertThat(item.get("budgetTotal").decimalValue()).isEqualByComparingTo(total);
+        call("GET", "/api/portfolio/9999999", ANALYST, null, null).andExpect(status().isNotFound());
+
+        var d = body(call("GET", "/api/dashboard", ANALYST, null, null).andExpect(status().isOk()));
+        assertThat(d.get("tendersByStage").get("TO_REVIEW").asInt()).isPositive();
+        assertThat(d.get("open").asInt()).isPositive();
+        assertThat(d.get("pendingByType").get("BUDGET").asInt()).isPositive();
+        assertThat(d.get("openBudget").decimalValue()).isGreaterThanOrEqualTo(new java.math.BigDecimal(total));
+        // reading the dashboard writes nothing
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
 }

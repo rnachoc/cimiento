@@ -34,9 +34,9 @@ public class PortfolioService {
 
     /** A tender as the portfolio shows it. Deadline and recommendation come from the agents' proposals. */
     public record Item(Long tenderId, String code, String title, String projectCode, TenderStage stage,
-                       Instant stageChangedAt, LocalDate bidDeadline, boolean deadlineApproved,
-                       String recommendation, int pendingReviews, int proposals, boolean bidAnalysisApproved,
-                       List<TenderStage> next) {
+                       Instant createdAt, Instant stageChangedAt, LocalDate bidDeadline, boolean deadlineApproved,
+                       String recommendation, java.math.BigDecimal budgetTotal, int pendingReviews, int proposals,
+                       boolean bidAnalysisApproved, List<TenderStage> next) {
     }
 
     private final TenderRepository tenders;
@@ -115,9 +115,12 @@ public class PortfolioService {
                 n -> "bid_no_bid".equals(n.path("kind").asText()))
                 .map(p -> content(p).path("recommendation").asText(null))
                 .orElse(null);
+        java.math.BigDecimal budget = latest(ps, ProposalType.BUDGET, n -> true)
+                .map(p -> decimal(content(p).path("claimedTotal").asText(null)))
+                .orElse(null);
         return new Item(t.getId(), t.getCode(), t.getTitle(), t.getProject().getCode(), t.getStage(),
-                t.getStageChangedAt(), deadline,
-                deadline != null && bid.get().getStatus() == ProposalStatus.EXECUTED, recommendation,
+                t.getCreatedAt(), t.getStageChangedAt(), deadline,
+                deadline != null && bid.get().getStatus() == ProposalStatus.EXECUTED, recommendation, budget,
                 facts.pendingReviews(), ps.size(), facts.bidAnalysisApproved(),
                 t.getStage().next().stream().sorted(Comparator.comparingInt(Enum::ordinal)).toList());
     }
@@ -136,6 +139,25 @@ public class PortfolioService {
     private JsonNode content(Proposal p) {
         JsonNode executed = json.read(p.getExecutedPayload());
         return executed != null && !executed.isNull() ? executed : json.read(p.getPayload());
+    }
+
+    private static java.math.BigDecimal decimal(String text) {
+        try {
+            return text == null ? null : new java.math.BigDecimal(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Latest live proposal of a type for one tender (pending or executed). */
+    @Transactional(readOnly = true)
+    public Optional<Proposal> latestLive(Long tenderId, ProposalType type) {
+        return latest(proposals.findByTenderIdOrderById(tenderId), type, n -> true);
+    }
+
+    /** What was executed (a correction, if any), otherwise what the agent proposed. */
+    public JsonNode contentOf(Proposal p) {
+        return content(p);
     }
 
     private static LocalDate date(String text) {

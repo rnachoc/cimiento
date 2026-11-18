@@ -37,7 +37,15 @@ public final class Payloads {
     public record ProgressRow(String activity, int plannedPct, int actualPct) {
     }
 
-    public record Progress(int week, List<ProgressRow> rows) {
+    /** One earlier week of the weekly progress file. */
+    public record ProgressWeek(int week, List<ProgressRow> rows) {
+    }
+
+    /** {@code history} is optional: earlier weeks, so the core can draw the progress curve. */
+    public record Progress(int week, List<ProgressRow> rows, List<ProgressWeek> history) {
+        public List<ProgressWeek> historyOrEmpty() {
+            return history == null ? List.of() : history;
+        }
     }
 
     public enum Severity { LOW, MEDIUM, HIGH }

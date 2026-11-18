@@ -12,6 +12,8 @@ import dev.cimiento.core.service.AuditService;
 import dev.cimiento.core.service.CanonicalJson;
 import dev.cimiento.core.service.ExportService;
 import dev.cimiento.core.service.PortfolioService;
+import dev.cimiento.core.service.DashboardService;
+import dev.cimiento.core.service.SiteService;
 import dev.cimiento.core.service.ProjectService;
 import dev.cimiento.core.service.ProposalService;
 import dev.cimiento.core.service.QueryService;
@@ -57,9 +59,14 @@ public class ApiController {
     private final CanonicalJson json;
     private final PortfolioService portfolio;
     private final ExportService exports;
+    private final SiteService site;
+    private final DashboardService dashboard;
 
     public ApiController(ProjectService projects, ProposalService proposals, QueryService queries,
-                         AuditService audit, CanonicalJson json, PortfolioService portfolio, ExportService exports) {
+                         AuditService audit, CanonicalJson json, PortfolioService portfolio, ExportService exports,
+                         SiteService site, DashboardService dashboard) {
+        this.site = site;
+        this.dashboard = dashboard;
         this.portfolio = portfolio;
         this.exports = exports;
         this.projects = projects;
@@ -104,6 +111,21 @@ public class ApiController {
     @GetMapping("/portfolio")
     public List<PortfolioService.Item> portfolio() {
         return portfolio.portfolio();
+    }
+
+    @GetMapping("/portfolio/{tenderId}")
+    public PortfolioService.Item portfolioItem(@PathVariable Long tenderId) {
+        return portfolio.item(tenderId);
+    }
+
+    @GetMapping("/tenders/{id}/site")
+    public SiteService.SiteView site(@PathVariable Long id) {
+        return site.site(id);
+    }
+
+    @GetMapping("/dashboard")
+    public dev.cimiento.core.rules.Metrics.Result dashboard() {
+        return dashboard.dashboard();
     }
 
     @PostMapping("/tenders/{id}/stage")
