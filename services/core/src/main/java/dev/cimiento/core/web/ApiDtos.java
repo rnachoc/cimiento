@@ -28,7 +28,16 @@ public final class ApiDtos {
     }
 
     public record TenderView(Long id, String projectCode, String code, String title, Integer contractTermMonths,
-                             LocalDate plannedStart) {
+                             LocalDate plannedStart, dev.cimiento.core.rules.TenderStage stage) {
+    }
+
+    public record StageRequest(@NotNull dev.cimiento.core.rules.TenderStage stage,
+                               @jakarta.validation.constraints.Size(max = 500) String note) {
+    }
+
+    public record StageChangeView(Long id, dev.cimiento.core.rules.TenderStage from,
+                                  dev.cimiento.core.rules.TenderStage to, String note, String actorRole,
+                                  java.time.Instant at) {
     }
 
     public record SubmitProposal(@NotNull Long tenderId, @NotNull ProposalType type, @NotNull JsonNode payload,

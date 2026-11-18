@@ -10,6 +10,8 @@ import dev.cimiento.core.security.ApiKeyFilter;
 import dev.cimiento.core.security.Role;
 import dev.cimiento.core.service.AuditService;
 import dev.cimiento.core.service.CanonicalJson;
+import dev.cimiento.core.service.ExportService;
+import dev.cimiento.core.service.PortfolioService;
 import dev.cimiento.core.service.ProjectService;
 import dev.cimiento.core.service.ProposalService;
 import dev.cimiento.core.service.QueryService;
@@ -22,11 +24,16 @@ import dev.cimiento.core.web.ApiDtos.ProjectView;
 import dev.cimiento.core.web.ApiDtos.ProposalView;
 import dev.cimiento.core.web.ApiDtos.RateView;
 import dev.cimiento.core.web.ApiDtos.ScheduleView;
+import dev.cimiento.core.web.ApiDtos.StageChangeView;
+import dev.cimiento.core.web.ApiDtos.StageRequest;
 import dev.cimiento.core.web.ApiDtos.SubmitProposal;
 import dev.cimiento.core.web.ApiDtos.TenderView;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,9 +55,13 @@ public class ApiController {
     private final QueryService queries;
     private final AuditService audit;
     private final CanonicalJson json;
+    private final PortfolioService portfolio;
+    private final ExportService exports;
 
     public ApiController(ProjectService projects, ProposalService proposals, QueryService queries,
-                         AuditService audit, CanonicalJson json) {
+                         AuditService audit, CanonicalJson json, PortfolioService portfolio, ExportService exports) {
+        this.portfolio = portfolio;
+        this.exports = exports;
         this.projects = projects;
         this.proposals = proposals;
         this.queries = queries;
@@ -88,6 +99,33 @@ public class ApiController {
     @GetMapping("/tenders/{id}")
     public TenderView tender(@PathVariable Long id) {
         return view(projects.tender(id));
+    }
+
+    @GetMapping("/portfolio")
+    public List<PortfolioService.Item> portfolio() {
+        return portfolio.portfolio();
+    }
+
+    @PostMapping("/tenders/{id}/stage")
+    public PortfolioService.Item moveStage(@RequestAttribute(ApiKeyFilter.ROLE_ATTRIBUTE) Role role,
+                                           @PathVariable Long id, @Valid @RequestBody StageRequest body) {
+        return portfolio.move(role, id, body.stage(), body.note());
+    }
+
+    @GetMapping("/tenders/{id}/stages")
+    public List<StageChangeView> stageHistory(@PathVariable Long id) {
+        return portfolio.history(id).stream().map(c -> new StageChangeView(c.getId(), c.getFromStage(),
+                c.getToStage(), c.getNote(), c.getActorRole(), c.getCreatedAt())).toList();
+    }
+
+    @GetMapping("/proposals/{id}/export")
+    public ResponseEntity<byte[]> export(@PathVariable Long id) {
+        var file = exports.export(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(file.filename()).build().toString())
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.content());
     }
 
     @GetMapping("/tenders/{id}/schedule")
@@ -149,7 +187,7 @@ public class ApiController {
 
     private static TenderView view(Tender t) {
         return new TenderView(t.getId(), t.getProject().getCode(), t.getCode(), t.getTitle(),
-                t.getContractTermMonths(), t.getPlannedStart());
+                t.getContractTermMonths(), t.getPlannedStart(), t.getStage());
     }
 
     private ProposalView view(Proposal p) {

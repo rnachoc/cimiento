@@ -1,7 +1,10 @@
 package dev.cimiento.core.domain;
 
 import jakarta.persistence.Column;
+import dev.cimiento.core.rules.TenderStage;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,6 +40,13 @@ public class Tender {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TenderStage stage = TenderStage.TO_REVIEW;
+
+    @Column(name = "stage_changed_at")
+    private Instant stageChangedAt;
+
     protected Tender() {
     }
 
@@ -71,5 +81,19 @@ public class Tender {
 
     public LocalDate getPlannedStart() {
         return plannedStart;
+    }
+
+    public TenderStage getStage() {
+        return stage;
+    }
+
+    public Instant getStageChangedAt() {
+        return stageChangedAt;
+    }
+
+    /** Only called after {@code Pipeline.check} allowed the move. */
+    public void moveTo(TenderStage next) {
+        this.stage = next;
+        this.stageChangedAt = Instant.now();
     }
 }

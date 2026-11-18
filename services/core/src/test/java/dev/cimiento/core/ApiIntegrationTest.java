@@ -276,4 +276,115 @@ class ApiIntegrationTest {
         String all = String.join("\n", jdbc.queryForList("SELECT details FROM audit_entry", String.class));
         assertThat(all).doesNotContain("Excavación").doesNotContain("Tierras");
     }
+
+    private String bidAnalysis(String deadline) {
+        return "{'tenderId':" + tenderId + ",'type':'BID_ANALYSIS','citations':[{'document':'pliego','page':1,"
+                + "'text':'Plazo de presentación'}],'payload':{'fields':{'fecha_presentacion':'" + deadline + "'}}}";
+    }
+
+    private JsonNode portfolioItem() throws Exception {
+        for (JsonNode n : body(call("GET", "/api/portfolio", ANALYST, null, null).andExpect(status().isOk()))) {
+            if (n.get("tenderId").asLong() == tenderId) {
+                return n;
+            }
+        }
+        throw new AssertionError("tender not in portfolio");
+    }
+
+    private ResultActions move(String key, String stage, String note) throws Exception {
+        String body = note == null ? "{'stage':'" + stage + "'}" : "{'stage':'" + stage + "','note':'" + note + "'}";
+        return call("POST", "/api/tenders/" + tenderId + "/stage", key, body, null);
+    }
+
+    @Test
+    void tenderMovesThroughThePipelineUnderTheCoreRules() throws Exception {
+        JsonNode item = portfolioItem();
+        assertThat(item.get("stage").asText()).isEqualTo("TO_REVIEW");
+        assertThat(item.get("bidDeadline").isNull()).isTrue();
+
+        long bid = body(call("POST", "/api/proposals", AGENT, bidAnalysis("2027-02-15"), UUID.randomUUID().toString())
+                .andExpect(status().isCreated())).get("id").asLong();
+        item = portfolioItem();
+        assertThat(item.get("bidDeadline").asText()).isEqualTo("2027-02-15");
+        assertThat(item.get("deadlineApproved").asBoolean()).isFalse();
+        assertThat(item.get("pendingReviews").asInt()).isEqualTo(1);
+
+        // only a reviewer moves tenders
+        move(AGENT, "UNDER_REVIEW", null).andExpect(status().isForbidden());
+        move(ANALYST, "UNDER_REVIEW", null).andExpect(status().isForbidden());
+        move(REVIEWER, "SUBMITTED", null).andExpect(status().isUnprocessableEntity());
+        move(REVIEWER, "UNDER_REVIEW", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("UNDER_REVIEW"));
+        move(REVIEWER, "DECISION_PENDING", null).andExpect(status().isOk());
+        // deciding to bid needs a reason and an approved bid analysis
+        move(REVIEWER, "IN_PREPARATION", null).andExpect(status().isUnprocessableEntity());
+        move(REVIEWER, "IN_PREPARATION", "encaja").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0]").value("deciding to bid needs an approved bid analysis"));
+        call("POST", "/api/proposals/" + bid + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isOk());
+        assertThat(portfolioItem().get("deadlineApproved").asBoolean()).isTrue();
+        move(REVIEWER, "IN_PREPARATION", "encaja en solvencia y margen").andExpect(status().isOk());
+
+        // submitting waits for every proposal of the tender to be decided
+        long sched = body(call("POST", "/api/proposals", AGENT, schedule(""), UUID.randomUUID().toString()))
+                .get("id").asLong();
+        move(REVIEWER, "SUBMITTED", null).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0]").value("1 proposal(s) still wait for review"));
+        call("POST", "/api/proposals/" + sched + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null);
+        move(REVIEWER, "SUBMITTED", null).andExpect(status().isOk());
+        move(REVIEWER, "AWARDED", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.next").isEmpty());
+        move(REVIEWER, "LOST", "x").andExpect(status().isUnprocessableEntity());
+
+        JsonNode history = body(call("GET", "/api/tenders/" + tenderId + "/stages", ANALYST, null, null));
+        assertThat(history).hasSize(5);
+        assertThat(history.get(2).get("to").asText()).isEqualTo("IN_PREPARATION");
+        assertThat(history.get(2).get("note").asText()).isEqualTo("encaja en solvencia y margen");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_entry WHERE action = 'TENDER_STAGE_CHANGED' "
+                + "AND entity_id = ?", Long.class, String.valueOf(tenderId))).isEqualTo(5);
+        // the reason stays out of the audit chain (and so out of the event stream)
+        String details = String.join("\n", jdbc.queryForList(
+                "SELECT details FROM audit_entry WHERE action = 'TENDER_STAGE_CHANGED'", String.class));
+        assertThat(details).doesNotContain("solvencia");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
+
+    @Test
+    void schedulesAndBudgetsExportAsFiles() throws Exception {
+        long sched = body(call("POST", "/api/proposals", AGENT, schedule(""), UUID.randomUUID().toString()))
+                .get("id").asLong();
+        var draft = call("GET", "/api/proposals/" + sched + "/export", ANALYST, null, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("-borrador.xml")))
+                .andReturn().getResponse();
+        assertThat(draft.getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+                .contains("<Finish>2027-01-22T17:00:00</Finish>").contains("Cimentación");
+        call("POST", "/api/proposals/" + sched + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null);
+        call("GET", "/api/proposals/" + sched + "/export", ANALYST, null, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("borrador"))));
+
+        String code = jdbc.queryForObject("SELECT code FROM rate ORDER BY code LIMIT 1", String.class);
+        String total = jdbc.queryForObject("SELECT unit_price * 10 FROM rate WHERE code = ?",
+                java.math.BigDecimal.class, code).setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+        String budget = "{'tenderId':" + tenderId + ",'type':'BUDGET','citations':[{'document':'mediciones',"
+                + "'page':1,'text':'x'}],'payload':{'lines':[{'code':'" + code + "','quantity':10}],'claimedTotal':'"
+                + total + "'}}";
+        long b = body(call("POST", "/api/proposals", AGENT, budget, UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))).get("id").asLong();
+        byte[] bc3 = call("GET", "/api/proposals/" + b + "/export", ANALYST, null, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".bc3")))
+                .andReturn().getResponse().getContentAsByteArray();
+        String text = new String(bc3, dev.cimiento.core.rules.Exports.BC3_CHARSET);
+        assertThat(text).startsWith("~V|").contains("~D|").contains("~C|" + code + "|").contains("|" + total + "|");
+
+        // failed or missing proposals have no export
+        long failed = body(call("POST", "/api/proposals", AGENT, schedule(",{'from':'A02','to':'A01','lag':0}"),
+                UUID.randomUUID().toString())).get("id").asLong();
+        call("GET", "/api/proposals/" + failed + "/export", ANALYST, null, null).andExpect(status().isConflict());
+        call("GET", "/api/proposals/9999999/export", ANALYST, null, null).andExpect(status().isNotFound());
+    }
 }
