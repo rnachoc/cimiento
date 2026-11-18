@@ -21,9 +21,13 @@ export interface Proposal {
   createdBy: string;
   createdAt: string;
   decidedAt: string | null;
+  /** Four eyes: a correction waiting for a second person. */
+  correctedPayload?: any;
+  correctedBy?: string | null;
+  decisions?: { outcome: Outcome; person: string | null; at: string }[];
 }
 export interface AuditEntry {
-  seq: number; createdAt: string; actorRole: string; action: string;
+  seq: number; createdAt: string; actorRole: string; actorPerson?: string | null; action: string;
   entityType: string; entityId: string; details: Record<string, unknown>; hash: string;
 }
 export type Outcome = 'APPROVE' | 'CORRECT' | 'REJECT';
@@ -34,7 +38,9 @@ export interface PortfolioItem {
   stageChangedAt: string | null; bidDeadline: string | null; deadlineApproved: boolean; recommendation: string | null;
   budgetTotal: number | null; pendingReviews: number; proposals: number; bidAnalysisApproved: boolean; next: Stage[];
 }
-export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; at: string; }
+export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; person?: string | null; at: string; }
+export type PersonRole = 'ESTIMATING' | 'SITE_MANAGER' | 'MANAGEMENT';
+export interface Person { username: string; displayName: string; role: PersonRole; scope: string[]; }
 export interface CurvePoint { week: number; plannedPct: number; actualPct: number; }
 export interface Deviation {
   activity: string; name: string; plannedPct: number; actualPct: number; delayDays: number;
@@ -113,6 +119,32 @@ export class Api {
     }
     return this.http.post<Proposal>(`/api/proposals/${id}/decision`, body);
   }
+}
+
+export const ROLE_LABELS: Record<PersonRole, string> = {
+  ESTIMATING: 'Estudios',
+  SITE_MANAGER: 'Jefatura de obra',
+  MANAGEMENT: 'Gerencia',
+};
+
+/** Stages only management may move a tender to (the core enforces the same list). */
+export const MANAGEMENT_STAGES: Stage[] = ['IN_PREPARATION', 'DISCARDED'];
+
+/**
+ * Why this person may not take a decision, mirroring rules/Authority in the core (the core
+ * decides; this only explains a disabled button). Empty string: allowed.
+ */
+export function decisionBlock(person: Person | null, p: Proposal, outcome: Outcome): string {
+  if (!person) return 'Inicia sesión para decidir.';
+  if (!person.scope.includes(p.type)) return `${ROLE_LABELS[person.role]} no decide ${TYPE_LABELS[p.type] ?? p.type}.`;
+  if (p.routingReasons.includes('AMOUNT_OVER_THRESHOLD') && person.role !== 'MANAGEMENT') {
+    return 'El importe supera el umbral: decide gerencia.';
+  }
+  if (outcome === 'CORRECT' && p.correctedBy) return 'Ya hay una corrección esperando segunda aprobación.';
+  if (outcome === 'APPROVE' && p.correctedBy === person.username) {
+    return 'Corregiste esta propuesta: la aprueba otra persona.';
+  }
+  return '';
 }
 
 export const TYPE_LABELS: Record<string, string> = {

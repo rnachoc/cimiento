@@ -2,7 +2,8 @@ import { JsonPipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Api, AuditEntry, Outcome, Proposal, TYPE_LABELS } from '../api';
+import { Api, AuditEntry, decisionBlock, Outcome, Proposal, TYPE_LABELS } from '../api';
+import { Session } from '../session';
 
 interface Bar { code: string; name: string; start: number; width: number; critical: boolean; duration: number; }
 
@@ -26,6 +27,18 @@ interface Bar { code: string; name: string; start: number; width: number; critic
         </div>
         @if (exportable()) {
           <a class="btn btn-ghost export" [href]="exportHref()" download data-testid="export">{{ exportLabel() }}</a>
+        }
+        @if (p.correctedBy && p.status === 'PENDING_REVIEW') {
+          <p class="banner four-eyes" data-testid="four-eyes" role="status">
+            Corregida por <strong>{{ p.correctedBy }}</strong>. Falta la aprobación de otra persona antes de ejecutarla.
+          </p>
+        }
+        @if (p.decisions?.length) {
+          <ol class="decisions" aria-label="Decisiones">
+            @for (d of p.decisions; track $index) {
+              <li><strong>{{ outcomeLabel(d.outcome) }}</strong> · {{ d.person ?? 'sin persona' }} · <span class="muted">{{ d.at }}</span></li>
+            }
+          </ol>
         }
         @if (injection()) {
           <p class="banner" role="note">Los documentos contienen texto que parece una instrucción dirigida a un sistema automático. Se trata como dato: no se ha obedecido.</p>
@@ -104,7 +117,7 @@ interface Bar { code: string; name: string; start: number; width: number; critic
           <h2 id="audit">Auditoría</h2>
           <ol class="audit">
             @for (a of trail(); track a.seq) {
-              <li><span class="seq">#{{ a.seq }}</span> {{ a.action }} <span class="muted">· {{ a.actorRole }} · {{ a.createdAt }}</span>
+              <li><span class="seq">#{{ a.seq }}</span> {{ a.action }} <span class="muted">· {{ a.actorPerson ?? a.actorRole }} · {{ a.createdAt }}</span>
                 <code class="hash" [title]="a.hash">{{ a.hash.slice(0, 12) }}…</code></li>
             }
           </ol>
@@ -121,11 +134,16 @@ interface Bar { code: string; name: string; start: number; width: number; critic
             <textarea id="corrected" name="corrected" rows="8" [(ngModel)]="corrected" class="mono"></textarea>
           }
           <div class="actions" role="group" aria-label="Decisión">
-            <button class="btn btn-approve" type="submit" data-testid="approve" [disabled]="busy()" (click)="outcome.set('APPROVE')">Aprobar</button>
-            <button class="btn btn-correct" type="button" [disabled]="busy()" (click)="startCorrect()">
+            <button class="btn btn-approve" type="submit" data-testid="approve" [disabled]="busy() || !!block('APPROVE')"
+                    [attr.aria-describedby]="block('APPROVE') ? 'why-not' : null" (click)="outcome.set('APPROVE')">
+              {{ p.correctedBy ? 'Aprobar corrección' : 'Aprobar' }}</button>
+            <button class="btn btn-correct" type="button" data-testid="correct" [disabled]="busy() || !!block('CORRECT')" (click)="startCorrect()">
               {{ outcome() === 'CORRECT' ? 'Enviar corrección' : 'Corregir' }}</button>
-            <button class="btn btn-reject" type="submit" [disabled]="busy()" (click)="outcome.set('REJECT')">Rechazar</button>
+            <button class="btn btn-reject" type="submit" [disabled]="busy() || !!block('REJECT')" (click)="outcome.set('REJECT')">Rechazar</button>
           </div>
+          @if (block('APPROVE') || block('CORRECT')) {
+            <p class="note why" id="why-not" data-testid="why-not">{{ block('APPROVE') || block('CORRECT') }}</p>
+          }
           <p class="note" aria-live="polite">{{ feedback() }}</p>
         </form>
       }
@@ -138,6 +156,9 @@ interface Bar { code: string; name: string; start: number; width: number; critic
     .badges { display: flex; flex-wrap: wrap; gap: 8px; }
     .tlink { color: inherit; }
     .export { display: inline-flex; margin-top: 16px; text-decoration: none; }
+    .decisions { margin: 14px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+    .why { color: var(--muted); }
+    .banner.four-eyes { background: rgba(255,184,0,.12); border-color: rgba(255,184,0,.5); }
     .banner { margin-top: 18px; padding: 14px 18px; border-radius: 14px; background: rgba(255,61,113,.12); border: 1px solid rgba(255,61,113,.5); }
     .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; margin-top: 24px; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -178,6 +199,7 @@ interface Bar { code: string; name: string; start: number; width: number; critic
 })
 export class ProposalDetail {
   private readonly api = inject(Api);
+  private readonly session = inject(Session);
   readonly id = input.required<string>();
   readonly p = signal<Proposal | null>(null);
   readonly allAudit = signal<AuditEntry[]>([]);
@@ -232,6 +254,16 @@ export class ProposalDetail {
     return { PENDING_REVIEW: 'Pendiente de revisión', EXECUTED: 'Ejecutada', REJECTED: 'Rechazada', RULES_FAILED: 'Rechazada por reglas' }[s];
   }
 
+  /** Why the signed-in person cannot take this decision ('' when allowed); the core decides anyway. */
+  block(outcome: Outcome): string {
+    const p = this.p();
+    return p ? decisionBlock(this.session.person(), p, outcome) : '';
+  }
+
+  outcomeLabel(o: Outcome): string {
+    return { APPROVE: 'Aprobada', CORRECT: 'Corregida', REJECT: 'Rechazada' }[o];
+  }
+
   startCorrect(): void {
     if (this.outcome() !== 'CORRECT') {
       this.outcome.set('CORRECT');
@@ -257,12 +289,17 @@ export class ProposalDetail {
       next: (updated) => {
         this.p.set(updated);
         this.busy.set(false);
-        this.feedback.set('Decisión registrada y auditada.');
+        this.feedback.set(updated.status === 'PENDING_REVIEW' && updated.correctedBy
+          ? 'Corrección registrada y auditada. Ahora la aprueba otra persona.' : 'Decisión registrada y auditada.');
+        this.outcome.set('APPROVE');
         this.api.audit().subscribe({ next: (a) => this.allAudit.set(a) });
       },
       error: (e) => {
         this.busy.set(false);
-        this.feedback.set(e?.status === 422 ? 'Las reglas rechazan la corrección: revisa los datos.' : `Error ${e?.status ?? ''}`);
+        const why = (e?.error?.details ?? []).map((d: { message?: string }) => d.message).filter(Boolean).join('; ');
+        this.feedback.set(e?.status === 422 ? 'Las reglas rechazan la corrección: revisa los datos.'
+          : e?.status === 403 || e?.status === 409 ? `El núcleo no lo permite: ${why || e?.error?.message || ''}`
+          : e?.status === 401 ? 'La sesión ha caducado: vuelve a entrar.' : `Error ${e?.status ?? ''}`);
       },
     });
   }

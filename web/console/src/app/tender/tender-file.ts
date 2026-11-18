@@ -119,7 +119,7 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
           <ol class="timeline" data-testid="history">
             <li><span class="dot"></span><b>{{ stageLabel('TO_REVIEW') }}</b><span class="muted">&nbsp;· {{ when(t.createdAt) }}</span></li>
             @for (h of history(); track h.id) {
-              <li><span class="dot"></span><b>{{ stageLabel(h.to) }}</b><span class="muted">&nbsp;· {{ when(h.at) }}</span>
+              <li><span class="dot"></span><b>{{ stageLabel(h.to) }}</b><span class="muted">&nbsp;· {{ when(h.at) }}@if (h.person) { · {{ h.person }} }</span>
                 @if (h.note) { <q>{{ h.note }}</q> }</li>
             }
           </ol>

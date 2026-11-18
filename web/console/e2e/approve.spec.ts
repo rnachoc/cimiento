@@ -9,6 +9,15 @@ const key = (name: string) => {
   return v;
 };
 
+/** Signs in through the console form, as a person would. */
+async function signIn(page: import('@playwright/test').Page, user: string, token: string) {
+  await page.goto('/acceso');
+  await page.getByLabel('Usuario').fill(user);
+  await page.getByLabel('Token personal').fill(token);
+  await page.getByTestId('sign-in').click();
+  await expect(page.getByTestId('who')).toBeVisible();
+}
+
 test('a reviewer approves a schedule in a real browser and the core executes it', async ({ page }) => {
   const reviewer = await request.newContext({ baseURL: CORE, extraHTTPHeaders: { 'X-Api-Key': key('CIMIENTO_REVIEWER_KEY') } });
   const agent = await request.newContext({ baseURL: CORE, extraHTTPHeaders: { 'X-Api-Key': key('CIMIENTO_AGENT_KEY') } });
@@ -40,12 +49,32 @@ test('a reviewer approves a schedule in a real browser and the core executes it'
 
   const response = await page.goto('/');
   expect(response?.headers()['content-security-policy']).toContain("script-src 'self'");
+  // without a session every view sends you to the sign-in page
+  await expect(page).toHaveURL(/\/acceso/);
+
+  // four eyes: the site manager corrects the schedule, and cannot approve their own correction
+  await signIn(page, 'obra', key('OBRA_TOKEN'));
+  await expect(page.getByTestId('who')).toContainText('Jefatura de obra');
   await expect(page.getByTestId(`card-${proposal.id}`)).toBeVisible();
   await page.getByTestId(`card-${proposal.id}`).click();
   await expect(page.getByTestId('status')).toHaveText('Pendiente de revisión');
   await expect(page.locator('.g-bar')).toHaveCount(2);
+  await page.getByTestId('correct').click();
+  await page.getByTestId('correct').click();
+  await expect(page.getByTestId('four-eyes')).toContainText('obra');
+  await expect(page.getByTestId('approve')).toBeDisabled();
+  await expect(page.getByTestId('status')).toHaveText('Pendiente de revisión');
+
+  // management approves it: now it runs, and the audit names both people
+  await page.getByRole('button', { name: 'Salir' }).click();
+  await signIn(page, 'gerencia', key('GERENCIA_TOKEN'));
+  await page.goto(`/proposals/${proposal.id}`);
   await page.getByTestId('approve').click();
   await expect(page.getByTestId('status')).toHaveText('Ejecutada');
+  const audit = await (await analyst.get('/api/audit')).json();
+  const people = audit.filter((a: { entityId: string; action: string }) => a.entityId === String(proposal.id)
+    && a.action === 'DECISION_RECORDED').map((a: { actorPerson: string }) => a.actorPerson);
+  expect(people).toEqual(['obra', 'gerencia']);
 
   const after = await (await analyst.get(`/api/proposals/${proposal.id}`)).json();
   expect(after.status).toBe('EXECUTED');
@@ -59,7 +88,7 @@ test('a reviewer approves a schedule in a real browser and the core executes it'
   const xml = await (await import('node:fs/promises')).readFile(await download.path(), 'utf8');
   expect(xml).toContain('<Name>A02 Cimentación</Name>');
 
-  // the pipeline: the reviewer moves the tender, and the core refuses to skip its rules
+  // the pipeline: management moves the tender, and the core refuses to skip its rules
   await page.goto('/cartera');
   const card = page.getByTestId(`tender-${code}`);
   await expect(page.getByTestId('col-TO_REVIEW').getByTestId(`tender-${code}`)).toBeVisible();

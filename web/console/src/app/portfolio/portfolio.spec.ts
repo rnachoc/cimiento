@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { PortfolioItem } from '../api';
+import { Session } from '../session';
 import { daysLeft, Portfolio } from './portfolio';
 
 function isoIn(days: number): string {
@@ -37,6 +38,7 @@ describe('Portfolio', () => {
       imports: [Portfolio],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
+    TestBed.inject(Session).person.set({ username: 'gerencia', displayName: 'Marta Gerencia', role: 'MANAGEMENT', scope: [] });
     http = TestBed.inject(HttpTestingController);
   });
 

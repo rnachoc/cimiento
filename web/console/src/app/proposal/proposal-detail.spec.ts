@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Proposal } from '../api';
+import { Person, Proposal } from '../api';
+import { Session } from '../session';
 import { ProposalDetail, scheduleBars } from './proposal-detail';
 
 const SCHEDULE: Proposal = {
@@ -24,6 +25,9 @@ const SCHEDULE: Proposal = {
   createdBy: 'AGENT', createdAt: '2026-11-18T10:00:00Z', decidedAt: null,
 };
 
+const OBRA: Person = { username: 'obra', displayName: 'Ana Obra', role: 'SITE_MANAGER', scope: ['SCHEDULE', 'REPORT', 'PROGRESS_UPDATE', 'RISK_SIGNAL'] };
+const ESTUDIOS: Person = { username: 'estudios', displayName: 'Luis Estudios', role: 'ESTIMATING', scope: ['TAKEOFF', 'BUDGET', 'BID_ANALYSIS', 'DOCUMENT_DRAFT'] };
+
 describe('scheduleBars', () => {
   it('places bars by early start and marks the critical path from the core', () => {
     const bars = scheduleBars(SCHEDULE);
@@ -44,6 +48,7 @@ describe('ProposalDetail', () => {
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
     http = TestBed.inject(HttpTestingController);
+    TestBed.inject(Session).person.set(OBRA);
   });
 
   async function render() {
@@ -85,6 +90,32 @@ describe('ProposalDetail', () => {
     await fixture.whenStable();
     expect(el.querySelector('[data-testid="status"]')?.textContent).toContain('Ejecutada');
     expect(el.querySelector('[data-testid="approve"]')).toBeNull();
+  });
+
+  it('disables the decision and says why when the person has no authority', async () => {
+    TestBed.inject(Session).person.set(ESTUDIOS);
+    const fixture = await render();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect((el.querySelector('[data-testid="approve"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('[data-testid="why-not"]')?.textContent).toContain('Estudios no decide Planning');
+  });
+
+  it('shows a correction waiting for a second person and stops its author from approving it', async () => {
+    const fixture = TestBed.createComponent(ProposalDetail);
+    fixture.componentRef.setInput('id', '9');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    http.expectOne('/api/proposals/9').flush({ ...SCHEDULE, correctedBy: 'obra', correctedPayload: SCHEDULE.payload,
+      decisions: [{ outcome: 'CORRECT', person: 'obra', at: 't' }] });
+    http.expectOne('/api/audit').flush([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="four-eyes"]')?.textContent).toContain('obra');
+    expect((el.querySelector('[data-testid="approve"]') as HTMLButtonElement).disabled).toBe(true);
+    expect((el.querySelector('[data-testid="correct"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('[data-testid="why-not"]')?.textContent).toContain('la aprueba otra persona');
   });
 
   it('rejects an invalid corrected payload before calling the API', async () => {

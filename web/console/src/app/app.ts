@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ROLE_LABELS } from './api';
+import { Session } from './session';
 
 @Component({
   selector: 'app-root',
@@ -16,9 +18,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <a routerLink="/cartera" routerLinkActive="on" ariaCurrentWhenActive="page">Cartera</a>
         <a routerLink="/direccion" routerLinkActive="on" ariaCurrentWhenActive="page">Dirección</a>
       </nav>
-      <span class="who" title="Las credenciales las añade el servidor; el navegador no guarda ninguna">
-        Revisor
-      </span>
+      @if (session.person(); as me) {
+        <span class="who" data-testid="who" [title]="'Sesión de ' + me.displayName">
+          {{ me.displayName }} <span class="role">· {{ roles[me.role] }}</span>
+        </span>
+        <button class="out" type="button" (click)="signOut()">Salir</button>
+      }
     </header>
     <main id="main" tabindex="-1"><router-outlet /></main>
     <footer class="foot">Datos sintéticos · Constructora Brisa (ficticia) · El modelo propone, el código decide</footer>
@@ -37,10 +42,21 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     .nav a { padding: 6px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .92rem; transition: color .2s, background .2s; }
     .nav a:hover { color: var(--text); }
     .nav a.on { color: var(--text); background: var(--surface-2); }
-    @media (max-width: 520px) { .topbar { gap: 8px; padding: 10px 14px; } .nav a { padding: 6px 10px; } .who { display: none; } .brand-name { display: none; } }
+    @media (max-width: 520px) { .topbar { gap: 8px; padding: 10px 14px; } .nav a { padding: 6px 10px; } .who { display: none; } .out { margin-left: auto; } .brand-name { display: none; } }
+    .out { font: inherit; font-size: .85rem; padding: 6px 12px; border-radius: 999px; background: none; color: var(--muted); border: 1px solid var(--border); cursor: pointer; }
+    .out:hover { color: var(--text); }
+    .role { color: var(--muted); }
     .who { margin-left: auto; font-size: .85rem; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
     main { width: min(1280px, calc(100% - 24px)); margin: 0 auto; outline: none; }
     .foot { text-align: center; color: var(--muted); font-size: .8rem; padding: 48px 16px; }
   `,
 })
-export class App {}
+export class App {
+  readonly session = inject(Session);
+  private readonly router = inject(Router);
+  readonly roles = ROLE_LABELS;
+
+  signOut(): void {
+    this.session.signOut().subscribe(() => this.router.navigateByUrl('/acceso'));
+  }
+}

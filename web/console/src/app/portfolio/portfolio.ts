@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Api, NOTE_REQUIRED, PortfolioItem, Stage, STAGE_LABELS } from '../api';
+import { Api, MANAGEMENT_STAGES, NOTE_REQUIRED, PortfolioItem, Stage, STAGE_LABELS } from '../api';
+import { Session } from '../session';
 
 interface Column { stage: Stage | 'CLOSED'; label: string; items: PortfolioItem[]; }
 
@@ -82,7 +83,8 @@ export function daysLeft(date: string, today: Date = new Date()): number {
                   <div class="row">
                     @for (s of t.next; track s) {
                       <button class="btn small" type="button" [class.btn-reject]="s === 'DISCARDED' || s === 'LOST'"
-                              [class.btn-ghost]="s !== 'DISCARDED' && s !== 'LOST'" [disabled]="busy()"
+                              [class.btn-ghost]="s !== 'DISCARDED' && s !== 'LOST'" [disabled]="busy() || !!blocked(s)"
+                              [attr.title]="blocked(s) || null"
                               [attr.data-testid]="'move-' + t.code + '-' + s" (click)="start(t, s)">{{ label(s) }}</button>
                     }
                   </div>
@@ -142,6 +144,7 @@ export function daysLeft(date: string, today: Date = new Date()): number {
 })
 export class Portfolio {
   private readonly api = inject(Api);
+  private readonly session = inject(Session);
   readonly items = signal<PortfolioItem[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -210,6 +213,15 @@ export class Portfolio {
     return d > 0 ? `en ${d} días` : `hace ${-d} días`;
   }
 
+  /** Why the signed-in person cannot make this move ('' when allowed); mirrors rules/Authority. */
+  blocked(s: Stage): string {
+    const me = this.session.person();
+    if (!me) return 'Inicia sesión.';
+    if (me.role === 'SITE_MANAGER') return 'Jefatura de obra no mueve licitaciones.';
+    if (MANAGEMENT_STAGES.includes(s) && me.role !== 'MANAGEMENT') return 'Lo decide gerencia.';
+    return '';
+  }
+
   start(t: PortfolioItem, s: Stage): void {
     this.moveError.set(null);
     if (NOTE_REQUIRED.includes(s)) {
@@ -250,7 +262,9 @@ export class Portfolio {
       error: (e) => {
         this.busy.set(false);
         const details = e?.error?.details;
-        this.moveError.set(Array.isArray(details) && details.length ? details : [e?.error?.message ?? `HTTP ${e?.status ?? '?'}`]);
+        this.moveError.set(Array.isArray(details) && details.length
+          ? details.map((d: string | { message: string }) => (typeof d === 'string' ? d : d.message))
+          : [e?.error?.message ?? `HTTP ${e?.status ?? '?'}`]);
       },
     });
   }
