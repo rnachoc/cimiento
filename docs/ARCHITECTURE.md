@@ -53,7 +53,7 @@ flowchart LR
 | Agents | `services/agents` | Ingestion, search (`POST /search`), coordinator, agents, model layer, Kafka consumers, telemetry. Talks to the core only through its API with the AGENT key. |
 | Evals | `evals` | The only package that reads ground truth. Retrieval, bid, plan, site, cost, scorecard and real-model runs. |
 | MCP server | `services/mcp` | Read-only tools for an assistant, ANALYST key, prices and planted instructions masked. |
-| Review console | `web/console` | Inbox of proposals waiting for a person; approve, correct or reject. nginx holds the REVIEWER key. |
+| Review console | `web/console` | Inbox of proposals waiting for a person (approve, correct or reject), the bid pipeline and file downloads. nginx holds the REVIEWER key. |
 | Local stack | `deploy` | Docker Compose: Postgres with pgvector, Kafka (KRaft), core, console, and an optional observability profile. |
 
 ## Life of a tender
@@ -122,6 +122,31 @@ Applied to every proposal, always in this order. Any FAIL blocks execution; a WA
 
 A detected planted instruction always forces review. The table lives in `ProposalType.java` and is covered by `RuleEngineTest`.
 
+## Bid pipeline
+
+Every tender has a stage. Moves are checked by `rules/Pipeline.java` and made only by a REVIEWER:
+
+```mermaid
+stateDiagram-v2
+    [*] --> TO_REVIEW
+    TO_REVIEW --> UNDER_REVIEW
+    UNDER_REVIEW --> DECISION_PENDING
+    DECISION_PENDING --> IN_PREPARATION: reason + approved bid analysis
+    IN_PREPARATION --> SUBMITTED: nothing left to review
+    SUBMITTED --> AWARDED
+    SUBMITTED --> LOST: reason
+    TO_REVIEW --> DISCARDED: reason
+    UNDER_REVIEW --> DISCARDED: reason
+    DECISION_PENDING --> DISCARDED: reason
+    IN_PREPARATION --> DISCARDED: reason
+```
+
+`GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain.
+
+## Exports
+
+`GET /api/proposals/{id}/export` turns a schedule into Microsoft Project XML (MSPDI) and a budget into FIEBDC-3 (BC3). Both files are built by code from the core's CPM and the company rates, never by a model. Failed or rejected proposals cannot be exported; a pending one is named as a draft.
+
 ## Audit and events
 
 - Audit rows are append-only (database triggers reject UPDATE and DELETE) and each row stores the hash of the previous one. `GET /api/audit/verify` recomputes the chain.
@@ -131,7 +156,7 @@ A detected planted instruction always forces review. The table lives in `Proposa
 
 ## Security
 
-- **Roles by key**: AGENT can register tenders and submit proposals; ANALYST only reads; REVIEWER decides. Keys come from the environment; the core refuses to start with the placeholder values.
+- **Roles by key**: AGENT can register tenders and submit proposals; ANALYST only reads; REVIEWER decides and moves tenders through the pipeline. Keys come from the environment; the core refuses to start with the placeholder values.
 - **Document text is data.** The eval split plants instructions in documents. The detector reports them and the proposal goes to a person. Obedience is measured with twin tenders (same tender with and without the instruction). The detector's patterns are built from the dev split only.
 - **No document text in telemetry.** Span and log attributes accept identifiers, counts and timings; a test checks every attribute of every eval tender, and `make cost-report` fails if a span matches document text.
 - **The console never holds a key.** nginx adds the REVIEWER key server side and sets a strict Content-Security-Policy with a nonce per request.
@@ -166,3 +191,4 @@ One trace per tender (`cimiento.tender`) with a span per agent, per model call (
 | [0009](decisions/0009-review-console.md) | Review console |
 | [0010](decisions/0010-events.md) | Events through Kafka |
 | [0011](decisions/0011-observability-and-cost.md) | Observability and cost |
+| [0012](decisions/0012-pipeline-and-exports.md) | Bid pipeline and file exports |

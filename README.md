@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **phases 0 to 12 done; the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
+> Status: **phases 0 to 13 done; the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
 
 ## What it does
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -10,8 +10,10 @@ A multi-agent AI system for construction: tender analysis, scheduling, site prog
 3. **Site**: weekly progress against plan, deviations, daily reports, RFIs, weekly reports and minutes.
 4. **Questions over documents** with a citation to document and page, or "not in the documents".
 5. **Human review**: a console where a person approves, corrects or rejects.
+6. **Bid pipeline**: every tender by stage, from first read to awarded or discarded, with its submission deadline and recommendation; the core refuses moves that skip its rules (no bid decision without an approved bid analysis and a written reason, no submission while proposals wait for review).
+7. **Exports**: an approved schedule downloads as Microsoft Project XML and a budget as BC3 (FIEBDC-3), built by code from the core's own calculations.
 
-Out of scope: reading CAD drawings or images, real integration with MS Project or Primavera, real data, multi-user accounts.
+Out of scope: reading CAD drawings or images, importing files back from MS Project, Primavera or budget software, real data, multi-user accounts.
 
 ## Principles
 - **Models never write to the database or run side effects.** They propose through tools; the core validates against deterministic rules, routes to automatic execution or to a person, and audits everything.
@@ -78,14 +80,14 @@ One trace per tender with a span per agent, per model call (GenAI conventions: m
 Everything runs without any key: the agents then use the rule-based reader (keyless baseline) and cost nothing. To use Claude, put **your own** Anthropic API key in your local `.env` (`ANTHROPIC_API_KEY=...`, created at console.anthropic.com). Calls are billed to the account that owns that key. `.env` is git-ignored and never shared; no key is stored in this repository. Results of the author's real-model run are published as recorded answers, so you can replay them for free.
 
 ## Review console
-Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The browser never holds a key (nginx adds the REVIEWER key) and a strict Content-Security-Policy applies.
+Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Cartera** view shows the bid pipeline by stage with deadline countdowns; schedules and budgets download as MS Project XML or BC3. The browser never holds a key (nginx adds the REVIEWER key) and a strict Content-Security-Policy applies.
 
 ![Inbox of the review console](docs/images/console-inbox.png)
 
 ![Proposal detail with schedule, rules, citations and decision](docs/images/console-detail.png)
 
 ## Use it from an assistant (MCP)
-The read-only MCP server exposes projects, tenders, schedules with critical path, proposals with citations, the audit log and document search. It uses the ANALYST key, so the core refuses any write; prices and planted instructions are masked. Example configuration (Claude Desktop or Claude Code):
+The read-only MCP server exposes projects, tenders, the bid pipeline, schedules with critical path, proposals with citations, the audit log and document search. It uses the ANALYST key, so the core refuses any write; prices and planted instructions are masked. Example configuration (Claude Desktop or Claude Code):
 
 ```json
 {
@@ -198,6 +200,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 10 | Telemetry and cost report | done |
 | 11 | Full evals and real-model run | scorecard, CI gate and Batch API tooling done; real-model run not done |
 | 12 | Documentation, keyless demo, video script | done |
+| 13 | Bid pipeline and MS Project / BC3 exports | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 

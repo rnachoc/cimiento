@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 12 terminadas salvo la ejecución con Claude real de la fase 11 (herramienta lista, sin ejecutar) (2026-11-18).
+Estado: fases 0 a 13 terminadas salvo la ejecución con Claude real de la fase 11 (herramienta lista, sin ejecutar) (2026-11-18).
 
 ## Fase 0: repo base
 
@@ -189,5 +189,20 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Ejecución con Claude real (fase 11) con su clave y límite de gasto.
 - Grabar el vídeo. Etiqueta v1.0.0 y hacer el repo público: decisión del autor.
 
+## Fase 13: cartera de licitaciones y exportaciones
+
+### Qué se hizo
+- Núcleo: etapa por licitación (V5), reglas puras en `rules/Pipeline.java` (solo avanzar o descartar; motivo obligatorio para ofertar, descartar o perder; ofertar exige análisis del pliego aprobado; presentar exige nada pendiente de revisión). `POST /api/tenders/{id}/stage` solo REVIEWER, auditado (`TENDER_STAGE_CHANGED` sin texto libre); motivo en `tender_stage_change`. `GET /api/portfolio` calcula fecha de presentación y recomendación desde las propuestas. `GET /api/tenders/{id}/stages` da el historial.
+- Exportaciones: planning a MS Project XML (MSPDI) y presupuesto a BC3 (FIEBDC-3, Windows-1252, CR LF), calculados con el CPM y las tarifas del núcleo. `GET /api/proposals/{id}/export`; las fallidas o rechazadas no se exportan; las pendientes llevan `-borrador`.
+- Consola: vista Cartera (columnas por etapa, cuenta atrás, pendientes, motivo cuando hace falta, errores de reglas del núcleo), navegación Bandeja/Cartera, botones de descarga. MCP: herramienta `get_portfolio`.
+- Tests: PipelineTest (5), ExportsTest (4), 2 de integración nuevos, 4 de consola, e2e ampliado (descarga del XML y cambio de etapa en un Chromium real). ADR 0012.
+
+### Ideas siguientes (no hechas)
+- Consulta en lenguaje natural desde la consola (el agente de preguntas existe; falta servirlo con su búsqueda en Docker sin descargar 0,8 GB en la demo).
+- Revisión previa a la presentación: lista de lo que pide el pliego frente a lo preparado.
+- Aprender de las correcciones del revisor (guardar correcciones y aplicarlas en la siguiente licitación, medido con el eval).
+- Riesgos de obra con propuesta de mitigación (plazo, coste, suministro) y informe de desviaciones.
+- Exportar e importar datos de la empresa (tarifas, plantillas) y borrado de datos.
+
 ## Siguiente paso
-Decisión del autor: ejecución real, vídeo, etiqueta v1.0.0 y repo público.
+Decisión del autor: ejecución real con Claude y etiqueta v1.1.0 para la fase 13.
