@@ -2,9 +2,9 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phases 0 to 10 done**. See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **phases 0 to 12 done; the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
 
-## What it does (target scope)
+## What it does
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
 2. **Scheduling**: activities, durations and dependencies, validated by the core, with a deterministic critical path.
 3. **Site**: weekly progress against plan, deviations, daily reports, RFIs, weekly reports and minutes.
@@ -23,48 +23,53 @@ Out of scope: reading CAD drawings or images, real integration with MS Project o
 
 ## Architecture
 
-```
- documents (clauses, annexes, measurements, site reports) -> ingestion (Python)
-                     |                                            |
-                     v                                            v
-   agents (Python, FastAPI) -- search (BM25 + pgvector + reranker), own database
-                     |  propose via the core API (AGENT key)
-                     v
-   core (Java 17, Spring Boot): rules, CPM, routing, hash-chained audit, roles  <-- review console (Angular)
-                     |
-   outbox -> Kafka -> consumers           OpenTelemetry -> Grafana
-   MCP server (read-only, ANALYST key)
+```mermaid
+flowchart LR
+    DOCS[Synthetic tender PDFs<br/>and site CSV] --> AGENTS[Agents · Python<br/>search, coordinator, model layer]
+    AGENTS -- "propose (AGENT key)" --> CORE[Core · Java 17<br/>rules, CPM, routing,<br/>hash-chained audit]
+    CONSOLE[Review console · Angular] -- "approve / correct / reject" --> CORE
+    MCP[MCP server, read-only] -- "read (ANALYST key)" --> CORE
+    CORE -- outbox --> KAFKA[(Kafka)] -- intake --> AGENTS
+    AGENTS -. spans, no text .-> OTEL[OpenTelemetry · Grafana]
 ```
 
-| Part | Stack | State |
-|---|---|---|
-| `data/generator` | Python 3.12, networkx, fpdf2 | done |
-| `services/core` | Java 17, Spring Boot 3.5, JPA, Flyway, Postgres | done |
-| `services/agents` | Python 3.12, FastAPI, pgvector, fastembed, Anthropic SDK | search and tender agents done |
-| `evals` | Python 3.12 | retrieval and bid evals |
-| `services/mcp` | Python, official MCP SDK (2.x) | done (read-only) |
-| `web/console` | Angular 22, nginx, Playwright | done |
-| Kafka outbox and consumers | Kafka (KRaft), confluent-kafka | done |
-| Telemetry and cost report | OpenTelemetry, Prometheus, Jaeger, Grafana | done |
+| Part | Stack |
+|---|---|
+| `data/generator` | Python 3.12, networkx, fpdf2 |
+| `services/core` | Java 17, Spring Boot 3.5, JPA, Flyway, Postgres |
+| `services/agents` | Python 3.12, FastAPI, pgvector, fastembed, official Anthropic SDK |
+| `evals` | Python 3.12; the only package that reads ground truth |
+| `services/mcp` | Python, official MCP SDK (2.x), read-only |
+| `web/console` | Angular 22, nginx, Playwright |
+| Events | Kafka (KRaft), transactional outbox, confluent-kafka |
+| Telemetry | OpenTelemetry, Prometheus, Jaeger, Grafana |
 
-Design details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisions: [docs/decisions](docs/decisions).
+Design, rules, routing table and security: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisions: [docs/decisions](docs/decisions).
 
 ## Quick start
 
-Requirements: Docker, a Linux shell (Linux, macOS or WSL2), JDK 17 or later, [uv](https://docs.astral.sh/uv/).
+Requirements: Docker, `make`, a Linux shell (Linux, macOS or WSL2) and [uv](https://docs.astral.sh/uv/). No API key, JDK or Node needed.
+
+```bash
+git clone https://github.com/rnachoc/cimiento.git && cd cimiento
+make demo        # data, core, console and agents in Docker; first run builds the images
+make demo-down   # stop everything and remove the demo data
+```
+
+`make demo` generates the synthetic tenders, starts Postgres, the core and the review console, runs the agents on six eval tenders without a model (keyless baseline) and prints the console URL (`http://localhost:38088`). The proposals wait there for a person.
+
+For development (JDK 17+ and Node 24 as well):
 
 ```bash
 cp .env.example .env      # then replace the placeholder keys (the core refuses to start with them)
 make up                   # Postgres with pgvector, Kafka
 make data                 # synthetic tenders: dev (seed 42) and eval (seed 1337)
 make test                 # every test suite (the core uses Testcontainers, so Docker must run)
-make eval-site            # site progress and reports eval
-make eval-plan            # planner eval
-make eval-bid             # tender agents eval (keyless baseline without ANTHROPIC_API_KEY)
+make scorecard            # bid, planning and site evals, gated against evals/baseline.json
 make eval-retrieval       # search eval; first run downloads about 0.8 GB of local models
 ```
 
-`make flow` sends a tender through Kafka (intake, agents, proposals, a reviewer decision, dead letters and replay) against real Postgres, Kafka and core. `make e2e` runs Postgres, the core and the console in Docker and lets a real Chromium approve a proposal. `make demo` (end to end, no API key) arrives in phase 12.
+`make flow` sends a tender through Kafka (intake, agents, proposals, a reviewer decision, dead letters and replay) against real Postgres, Kafka and core. `make e2e` lets a real Chromium approve a proposal through the console. `make observability` checks the telemetry stack. `make help` lists every target.
 
 ## Observability
 One trace per tender with a span per agent, per model call (GenAI conventions: model and tokens) and per core request; metrics for tokens, latency and proposals; a provisioned Grafana dashboard. Spans carry identifiers, counts and timings only: a test processes every eval tender and checks every attribute, and `make cost-report` fails if any span matches document text. `make observability` starts the collector, Prometheus, Jaeger and Grafana and checks each of them; `make cost-report` turns tokens into cost for priced models only.
@@ -159,7 +164,14 @@ Measured by `make eval-site` on the eval split. Report: [evals/reports/site.md](
 When a delayed activity has not started yet at the cut date, the data only gives a lower bound of its delay (10 cases on eval); the 4 impact misses and the 2 alarm disagreements come from those cases.
 
 ### Agents with Claude
-Not measured yet. Real-model runs happen once, in phase 11, and will be reported separately from the keyless baseline.
+**Not measured yet.** No result in this README comes from a real model. The tooling is ready: `make eval-real` sends the eval prompts through the Batch API (half price) with your own key, stores the answers as recordings with model and date, and scores them with the same evals and scorecard. Without `CONFIRM=1` it only counts the requests of the first stage; nothing is sent. A confirmed run reports tokens and batch cost per model.
+
+```bash
+make eval-real MODELS=claude-haiku-5-5            # dry run: counts requests, sends nothing
+make eval-real MODELS=claude-haiku-5-5 CONFIRM=1  # sends the batch, billed to your key
+```
+
+Results with Claude will be published here, labelled with model and date, next to the keyless baseline and never mixed with it.
 
 ## How it is measured
 - `make scorecard` gathers every eval and gates it against `evals/baseline.json` (keyless baseline): harms (planted instructions obeyed, forbidden writes, false citations, report sentences without a source) must be 0, and no score may drop below the baseline. CI runs it on every push.
@@ -184,15 +196,16 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 8 | Review console | done |
 | 9 | Events through Kafka | done |
 | 10 | Telemetry and cost report | done |
-| 11 | Full evals and real-model run | scorecard and CI gate done; real-model run pending |
-| 12 | Documentation, demo video, v1.0.0 | planned |
+| 11 | Full evals and real-model run | scorecard, CI gate and Batch API tooling done; real-model run not done |
+| 12 | Documentation, keyless demo, video script | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 
 ## Known limitations
 - Documents come from templates. Held-out wording reduces overfitting to them but does not remove it.
 - The planning ground truth follows the generator's own productivity table and dependency rules, so schedule metrics measure agreement with those rules, not with real sites.
-- Without an API key the agents use a rule-based reader; its numbers are a baseline, not model quality.
+- Without an API key the agents use a rule-based reader; its numbers are a baseline, not model quality. No real-model result is published yet.
+- The rule-based reader was written against dev wording; it misses one of the three planted instructions on eval (it is still not obeyed).
 - If the contract term is not found, the tender is registered without it and every schedule goes to a person.
 - Search runs within one tender's documents (tens of chunks each), which is easier than searching a large archive.
 - Role keys identify a role, not a person: every decision is recorded as REVIEWER.

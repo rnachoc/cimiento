@@ -17,3 +17,8 @@ Relevant reports include:
 - No secrets in code; gitleaks runs in pre-commit and CI over the full history.
 - Document text is treated as data, never as instructions.
 - Role-based keys per service; the browser never holds credentials.
+- The core refuses to start while role keys hold the `.env.example` placeholders; `make demo` generates random keys into a git-ignored file.
+- Anthropic API keys are never stored in the repository. Each user puts their own key in a local, git-ignored `.env`; without one everything runs keyless. Never paste a key into an issue, a log or a recording.
+
+## Supported versions
+Only the latest release on the default branch receives fixes.

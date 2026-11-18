@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 10 terminadas; fase 11 a medias (scorecard hecha, falta la ejecución con Claude) (2026-11-18).
+Estado: fases 0 a 12 terminadas salvo la ejecución con Claude real de la fase 11 (herramienta lista, sin ejecutar) (2026-11-18).
 
 ## Fase 0: repo base
 
@@ -175,7 +175,19 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 ### Pendiente (necesita al usuario)
 - Ejecución con Claude real en 2 o 3 modelos. Requiere `ANTHROPIC_API_KEY` y un límite de gasto puesto antes en la consola de Anthropic.
 - Estimación (aproximada, 3,5 caracteres por token): conjunto de evaluación, 33 licitaciones x 3 llamadas, unos 144 000 tokens de entrada por modelo. Opus 5.5: 3,81 a 10,28 USD (1,91 a 5,14 con Batch API); Sonnet 5.5: 1,91 a 5,14 (0,95 a 2,57); Haiku 5.5: 0,10 a 0,26 (0,05 a 0,13). Los tres: 5,81 a 15,67 USD (2,91 a 7,84 con Batch API).
-- La capa de modelo usa llamadas síncronas; la Batch API está por implementar. El esquema de salida estructurada no se ha probado aún contra la API real.
+- Batch API implementada (`make eval-real`, ensayo sin `CONFIRM=1`). El esquema de salida estructurada no se ha probado aún contra la API real.
+- Cada usuario usa su propia clave en su `.env`; el repo no guarda ninguna.
+
+## Fase 12: documentación y demo
+
+### Qué se hizo
+- `make demo` / `make demo-down`: datos, núcleo y consola en Docker, agentes sin clave sobre seis licitaciones del eval (E-012 con instrucción plantada detectada), claves de rol aleatorias en `.demo-keys` (ignorado por git), puertos 35432/38080/38088. Probado desde un clon limpio en WSL: 3 min con construcción de imágenes, consola HTTP 200, cadena de auditoría intacta, 0 contenedores tras `make demo-down`.
+- docs/ARCHITECTURE.md reescrito en inglés con diagramas mermaid, reglas, tabla de enrutado, seguridad e índice de ADR.
+- README final (inicio rápido con `make demo`, resultados solo sin clave, sección Agents with Claude), SECURITY.md revisado, guion del vídeo en docs/demo-video.md (lo graba el autor).
+
+### Pendiente (necesita al usuario)
+- Ejecución con Claude real (fase 11) con su clave y límite de gasto.
+- Grabar el vídeo. Etiqueta v1.0.0 y hacer el repo público: decisión del autor.
 
 ## Siguiente paso
-Fase 11: ejecución con Claude real cuando el usuario ponga la clave y el límite de gasto; después fase 12.
+Decisión del autor: ejecución real, vídeo, etiqueta v1.0.0 y repo público.
