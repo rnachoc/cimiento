@@ -84,6 +84,9 @@ class ProgressReport:
     impact_days: int
     report_dates: list[str]
     incidents: list[dict] = field(default_factory=list)  # from daily reports, with record ids
+    history: list[dict] = field(
+        default_factory=list
+    )  # earlier weeks, for the core's progress curve
 
     @property
     def record(self) -> str:
@@ -172,15 +175,30 @@ def analyse(tender: str, site_dir: Path, schedule: dict) -> ProgressReport:
     impact = cpm(shifted)[0] - end
     incidents = read_daily(site_dir / "partes")
     dates = sorted(p.stem for p in (site_dir / "partes").glob("*.txt"))
-    return ProgressReport(tender, week, cut, deviations, impact, dates, incidents)
+    history = []
+    for w in sorted({int(r["semana"]) for r in rows} - {week}):
+        week_rows = [
+            {
+                "activity": r["actividad"],
+                "plannedPct": int(r["avance_planificado_pct"]),
+                "actualPct": int(r["avance_real_pct"]),
+            }
+            for r in rows
+            if int(r["semana"]) == w
+            and r["actividad"] in times
+            and (int(r["avance_planificado_pct"]) or int(r["avance_real_pct"]))
+        ]
+        history.append({"week": w, "rows": sorted(week_rows, key=lambda x: x["activity"])})
+    return ProgressReport(tender, week, cut, deviations, impact, dates, incidents, history)
 
 
 def progress_payload(r: ProgressReport) -> dict:
-    """PROGRESS_UPDATE payload for the core (strict schema: week and rows)."""
+    """PROGRESS_UPDATE payload for the core: status week, its rows and the earlier weeks."""
     return {
         "week": r.week,
         "rows": [
             {"activity": d.activity, "plannedPct": d.planned_pct, "actualPct": d.actual_pct}
             for d in r.deviations
         ],
+        "history": r.history,
     }

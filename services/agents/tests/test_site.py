@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from cimiento_agents.citations import Citation
-from cimiento_agents.progress import analyse, cpm
+from cimiento_agents.progress import analyse, cpm, progress_payload
 from cimiento_agents.reports import (
     Report,
     Sentence,
@@ -88,6 +88,21 @@ def test_delay_spi_alarm_and_impact(tmp_path):
             "text": "Incidencias: Retraso en el inicio de A03 Cubierta por lluvias.",
         }
     ]
+
+
+def test_payload_carries_earlier_weeks_for_the_curve(tmp_path):
+    site = make_site(tmp_path, [("A01", 100, 100), ("A02", 50, 30), ("A03", 0, 0)])
+    csv = site / "avance_semanal.csv"
+    earlier = "1;2027-01-08;A01;x;100;90\n1;2027-01-08;A02;x;0;0\n1;2027-01-08;ZZ9;x;10;10\n"
+    head, *rest = csv.read_text(encoding="utf-8").splitlines(keepends=True)
+    csv.write_text(head + earlier + "".join(rest), encoding="utf-8")
+    payload = progress_payload(analyse("T", site, SCHEDULE))
+    assert payload["week"] == 2
+    # earlier weeks only, without activities outside the schedule or with nothing planned or done
+    assert payload["history"] == [
+        {"week": 1, "rows": [{"activity": "A01", "plannedPct": 100, "actualPct": 90}]}
+    ]
+    assert [r["activity"] for r in payload["rows"]] == ["A01", "A02"]
 
 
 def test_reports_have_sources_for_every_sentence(tmp_path):
