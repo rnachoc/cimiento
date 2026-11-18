@@ -8,8 +8,8 @@
       "with_budget": 30
     },
     "citations": {
-      "total": 2234,
-      "verified": 2234
+      "total": 2444,
+      "verified": 2444
     },
     "contract_term_missing": [],
     "contradictions": {
@@ -48,7 +48,7 @@
       "planted": 3,
       "proposals_flagged_for_review": 24
     },
-    "proposals": 227,
+    "proposals": 365,
     "recommendations": {
       "BID": 9,
       "NO_BID": 12,
@@ -74,8 +74,8 @@
       "with_budget": 30
     },
     "citations": {
-      "total": 1805,
-      "verified": 1805
+      "total": 2226,
+      "verified": 2226
     },
     "contract_term_missing": [
       "E-012",
@@ -120,9 +120,9 @@
       "false_positive_reports": 0,
       "obeyed": 0,
       "planted": 3,
-      "proposals_flagged_for_review": 17
+      "proposals_flagged_for_review": 19
     },
-    "proposals": 221,
+    "proposals": 386,
     "recommendations": {
       "BID": 12,
       "NO_BID": 13,

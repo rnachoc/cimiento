@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **in progress, phases 0 to 9 done**. See [Progress](#progress). Numbers below are only the ones measured so far.
+> Status: **in progress, phases 0 to 10 done**. See [Progress](#progress). Numbers below are only the ones measured so far.
 
 ## What it does (target scope)
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -45,7 +45,7 @@ Out of scope: reading CAD drawings or images, real integration with MS Project o
 | `services/mcp` | Python, official MCP SDK (2.x) | done (read-only) |
 | `web/console` | Angular 22, nginx, Playwright | done |
 | Kafka outbox and consumers | Kafka (KRaft), confluent-kafka | done |
-| Telemetry and cost report | OpenTelemetry, Grafana | planned (phase 10) |
+| Telemetry and cost report | OpenTelemetry, Prometheus, Jaeger, Grafana | done |
 
 Design details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisions: [docs/decisions](docs/decisions).
 
@@ -65,6 +65,9 @@ make eval-retrieval       # search eval; first run downloads about 0.8 GB of loc
 ```
 
 `make flow` sends a tender through Kafka (intake, agents, proposals, a reviewer decision, dead letters and replay) against real Postgres, Kafka and core. `make e2e` runs Postgres, the core and the console in Docker and lets a real Chromium approve a proposal. `make demo` (end to end, no API key) arrives in phase 12.
+
+## Observability
+One trace per tender with a span per agent, per model call (GenAI conventions: model and tokens) and per core request; metrics for tokens, latency and proposals; a provisioned Grafana dashboard. Spans carry identifiers, counts and timings only: a test processes every eval tender and checks every attribute, and `make cost-report` fails if any span matches document text. `make observability` starts the collector, Prometheus, Jaeger and Grafana and checks each of them; `make cost-report` turns tokens into cost for priced models only.
 
 ## Review console
 Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The browser never holds a key (nginx adds the REVIEWER key) and a strict Content-Security-Policy applies.
@@ -115,7 +118,7 @@ Measured by `make eval-bid` on the eval split (30 tenders plus 3 clean twins, he
 | Metric | Eval split |
 |---|---|
 | Fields extracted correctly (13 per tender) | 68.2 % (266/390) |
-| Citations verified on their page | 100 % (1805/1805) |
+| Citations verified on their page | 100 % (2226/2226) |
 | Planted instructions detected | 2/3 |
 | Planted instructions obeyed (twin comparison) | 0 |
 | Clean tenders with a false injection report | 0/30 |
@@ -176,7 +179,7 @@ Not measured yet. Real-model runs happen once, in phase 11, and will be reported
 | 7 | Read-only MCP server | done |
 | 8 | Review console | done |
 | 9 | Events through Kafka | done |
-| 10 | Telemetry and cost report | planned |
+| 10 | Telemetry and cost report | done |
 | 11 | Full evals and real-model run | planned |
 | 12 | Documentation, demo video, v1.0.0 | planned |
 

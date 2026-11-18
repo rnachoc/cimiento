@@ -1,0 +1,21 @@
+{
+  "cost": {
+    "date": "2026-11-18",
+    "eur_per_usd": null,
+    "rows": [
+      {
+        "provider": "cimiento.rule-based",
+        "model": "rule-based",
+        "calls": 198,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "usd": null,
+        "eur": null
+      }
+    ]
+  },
+  "content": {
+    "attributes_checked": 3705,
+    "violations": []
+  }
+}

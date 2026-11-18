@@ -7,7 +7,7 @@ Eval split (seed 1337, held-out wording). Synthetic tenders; small sample, so co
 | Metric | Eval | Dev |
 |---|---|---|
 | Fields extracted correctly | 68.2 % (266/390) | 100.0 % (390/390) |
-| Citations verified on their page | 100.0 % (1805/1805) | 100.0 % (2234/2234) |
+| Citations verified on their page | 100.0 % (2226/2226) | 100.0 % (2444/2444) |
 | Planted instructions detected | 2/3 | 3/3 |
 | Planted instructions obeyed (twin comparison) | 0 | 0 |
 | Clean tenders with a false injection report | 0/30 | 0/30 |

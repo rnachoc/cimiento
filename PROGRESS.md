@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 9 terminadas (2026-11-18). Siguiente: fase 10.
+Estado: fases 0 a 10 terminadas (2026-11-18). Siguiente: fase 11.
 
 ## Fase 0: repo base
 
@@ -89,7 +89,7 @@ hit@1 / hit@5: léxico 67,9 / 75,3 %; vectores 64,5 / 91,4 %; híbrido 70,4 / 83
 - Verificado: 46 tests de agentes, prueba de punta a punta contra el núcleo real (11 propuestas aceptadas, ninguna falla reglas, auditoría íntegra).
 
 ### Resultados (eval, línea base sin clave)
-Campos 266/390; citas verificadas 1805/1805; instrucciones detectadas 2/3, obedecidas 0, falsos positivos 0/30; escrituras indebidas 0; partidas exactas 380/380; presupuestos exactos 30/30; contradicciones 3/6 sin falsos positivos (tras el cambio de la fase 5).
+Campos 266/390; citas verificadas 2226/2226 (incluidas las de obra); instrucciones detectadas 2/3, obedecidas 0, falsos positivos 0/30; escrituras indebidas 0; partidas exactas 380/380; presupuestos exactos 30/30; contradicciones 3/6 sin falsos positivos (tras el cambio de la fase 5).
 
 ### Decisiones
 - Sin `fallbacks` del servidor: una respuesta de otro modelo falsearía la comparación de modelos.
@@ -157,5 +157,15 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 ### Deuda conocida
 - El módulo Kafka de Testcontainers 1.21 no arranca bajo Docker Desktop en WSL; el test Java del outbox usa un productor simulado y el broker real se prueba en `make flow`.
 
+## Fase 10: observabilidad y coste
+
+### Qué se hizo
+- OpenTelemetry con convenciones GenAI: traza por licitación, span por agente, por llamada al modelo (modelo y tokens) y por petición al núcleo; métricas de tokens, latencia y propuestas. Atributos validados como la telemetría (sin texto).
+- Perfil `observability` (Collector, Prometheus, Jaeger, Grafana con panel aprovisionado) y `make observability`: 10 comprobaciones contra la pila real.
+- `make cost-report`: tokens por modelo y coste solo para modelos con precio (USD de la lista oficial; euros solo si el usuario fija el tipo de cambio). Revisa también los spans contra todo el texto de los documentos: 3705 atributos, 0 con texto.
+- CI: el trabajo `flow` ejecuta además `make cost-report` y la comprobación de observabilidad. ADR 0011.
+- Incidencia corregida: `scripts/flow.sh` se subió sin permiso de ejecución y el trabajo `flow` del CI falló; ya pasa.
+- Fallo de la fase 6 encontrado y corregido: las propuestas de obra citaban un resumen ("semana N, corte...") en vez de una línea literal del CSV, y la tasa de citas verificadas bajó al 94 %. Ahora citan la línea literal y el verificador lee el CSV; test de regresión que verifica cada cita de cada propuesta.
+
 ## Siguiente paso
-Fase 10: ejecutar prompts/10-observabilidad.md.
+Fase 11: ejecutar prompts/11-evals-y-modelo-real.md. Necesita ANTHROPIC_API_KEY y un límite de gasto puesto antes por el usuario.
