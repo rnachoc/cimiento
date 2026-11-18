@@ -30,6 +30,7 @@ Python 3.12 + FastAPI + official Anthropic SDK + Pydantic + uv (agents). Java 17
 
 ## Working agreement
 - One phase at a time. Start every phase in plan mode: propose the file list and tests, wait for approval, then implement.
-- After each phase: run `make test`, update PROGRESS.md, commit, and stop. Ask before starting the next phase.
+- After each phase: run `make test`, update PROGRESS.md and README.md (status, progress table, measured results only), commit, and stop. Ask before starting the next phase.
+- Commits show only the author: no Claude co-author trailer.
 - Prefer small, boring, testable code over clever code. No dependency without a reason recorded in an ADR in docs/decisions.
 - If something is ambiguous, ask one concise question instead of guessing.

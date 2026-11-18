@@ -3,7 +3,7 @@
 Cimiento is a portfolio project that runs on synthetic data only. It is not meant for production use.
 
 ## Reporting a vulnerability
-Please open a private security advisory on the GitHub repository (Security tab, "Report a vulnerability"). Do not open a public issue for security problems.
+Please open a private security advisory on the GitHub repository (Security tab, "Report a vulnerability") or write to Ignacio Rodriguez Caro at rnachoccontact@gmail.com. Do not open a public issue for security problems.
 
 ## Scope
 Relevant reports include:
