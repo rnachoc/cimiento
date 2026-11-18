@@ -130,6 +130,10 @@ def _analyse_tender(
     )
     payload = {
         "fields": run.fields,
+        # where each field was read; the core stores JSON with sorted keys, so order cannot carry it
+        "sources": {
+            name: {"document": c.document, "page": c.page} for name, c in run.citations.items()
+        },
         "notFound": run.not_found,
         "injections": [c.model_dump() for c in injections],
         "source": run.source,

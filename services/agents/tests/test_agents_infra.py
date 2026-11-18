@@ -203,6 +203,20 @@ def test_coordinator_proposes_and_never_executes(dev_split):
     assert all(p["citations"] for p in core.proposals)
 
 
+def test_every_field_names_its_own_source(dev_split):
+    core = RecordingCore()
+    run = analyse_tender(dev_split / "tenders" / "D-001", FakeModel(None), core, "2027-01-04")
+    payload = core.proposals[0]["payload"]
+    assert set(payload["sources"]) == set(payload["fields"])
+    for name, c in run.citations.items():
+        assert payload["sources"][name] == {"document": c.document, "page": c.page}
+        # the source is one of the proposal's verified citations
+        assert any(
+            x["document"] == c.document and x["page"] == c.page and x["text"] == c.text
+            for x in core.proposals[0]["citations"]
+        )
+
+
 def test_injection_is_reported_and_flagged(dev_split):
     # find a tender whose documents carry a planted instruction (detected from documents only)
     core = RecordingCore()
