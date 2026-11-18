@@ -15,7 +15,8 @@ from cimiento_agents.tender_agents import load_rates
 
 CORE = os.environ["CORE_URL"]
 SPLIT = Path(os.environ["DATA_ROOT"]) / "eval"
-TENDERS = ["E-001", "E-002", "E-003", "E-004", "E-005"]
+# E-002 and E-012 hide planted instructions; the keyless reader detects the one in E-012 only.
+TENDERS = ["E-001", "E-002", "E-003", "E-004", "E-005", "E-012"]
 
 
 def main() -> None:

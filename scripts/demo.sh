@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Keyless end-to-end demo: synthetic data, core + review console in Docker, the agents (rule-based
-# reader, or Claude if ANTHROPIC_API_KEY is set in .env) analyse a few tenders, and the proposals
+# reader, or Claude only if ANTHROPIC_API_KEY is exported in the shell) analyse a few tenders, and the proposals
 # wait in the console for a person. Needs Docker, make and uv. No API key, no JDK, no Node.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -31,12 +31,12 @@ for i in $(seq 1 120); do
   sleep 2
 done
 
-echo "==> 3/4 agents analyse five tenders (eval split)"
+echo "==> 3/4 agents analyse six tenders (eval split)"
 cd "$ROOT/services/agents"
 CORE_URL="$CORE_URL" DATA_ROOT="$ROOT/data/generated" uv run --quiet python "$ROOT/scripts/demo_run.py"
 
-echo "==> 4/4 results"
-cat "$ROOT/evals/reports/scorecard.md" | sed -n '1,12p'
+echo "==> 4/4 committed scorecard (all 30 eval tenders; rerun it with: make scorecard)"
+sed -n '1,12p' "$ROOT/evals/reports/scorecard.md"
 cat <<EOF
 
 Review console:  http://localhost:${CONSOLE_PORT}   (approve, correct or reject the proposals)
