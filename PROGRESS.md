@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 8 terminadas (2026-11-18). Siguiente: fase 9.
+Estado: fases 0 a 9 terminadas (2026-11-18). Siguiente: fase 10.
 
 ## Fase 0: repo base
 
@@ -146,5 +146,16 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Cualquiera que llegue a nginx actúa como REVIEWER (sin autenticación de personas).
 - Node 24 instalado en `~/.local/node` dentro de WSL (sin sudo).
 
+## Fase 9: eventos
+
+### Qué se hizo
+- Outbox transaccional en el núcleo (V4), publicador programado a `cimiento.audit` con clave por proyecto, al menos una vez; temas creados por el núcleo.
+- Consumidores en Python (`confluent-kafka`) con reintentos de espera creciente, cola de errores con contexto en cabeceras y reproducción; puente `cimiento.intake` -> agentes -> núcleo; consumidores idempotentes.
+- `make flow` y trabajo de CI: 12 comprobaciones con Kafka real (de la entrada a la decisión, cola de errores, reproducción, idempotencia). ADR 0010.
+- Incidencia encontrada y corregida: el CI fallaba desde la fase 7 por una clave fija de test en MCP que gitleaks marca; ahora es aleatoria y la huella antigua está en `.gitleaksignore` como falso positivo. Debí vigilar ese CI al subir la fase 7.
+
+### Deuda conocida
+- El módulo Kafka de Testcontainers 1.21 no arranca bajo Docker Desktop en WSL; el test Java del outbox usa un productor simulado y el broker real se prueba en `make flow`.
+
 ## Siguiente paso
-Fase 9: ejecutar prompts/09-eventos.md.
+Fase 10: ejecutar prompts/10-observabilidad.md.
