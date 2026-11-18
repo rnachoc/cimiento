@@ -69,6 +69,9 @@ make eval-retrieval       # search eval; first run downloads about 0.8 GB of loc
 ## Observability
 One trace per tender with a span per agent, per model call (GenAI conventions: model and tokens) and per core request; metrics for tokens, latency and proposals; a provisioned Grafana dashboard. Spans carry identifiers, counts and timings only: a test processes every eval tender and checks every attribute, and `make cost-report` fails if any span matches document text. `make observability` starts the collector, Prometheus, Jaeger and Grafana and checks each of them; `make cost-report` turns tokens into cost for priced models only.
 
+## Using Claude: bring your own key
+Everything runs without any key: the agents then use the rule-based reader (keyless baseline) and cost nothing. To use Claude, put **your own** Anthropic API key in your local `.env` (`ANTHROPIC_API_KEY=...`, created at console.anthropic.com). Calls are billed to the account that owns that key. `.env` is git-ignored and never shared; no key is stored in this repository. Results of the author's real-model run are published as recorded answers, so you can replay them for free.
+
 ## Review console
 Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The browser never holds a key (nginx adds the REVIEWER key) and a strict Content-Security-Policy applies.
 
