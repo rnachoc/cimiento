@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fase 1 terminada (2026-11-18). Siguiente: fase 2.
+Estado: fase 2 terminada (2026-11-18). Siguiente: fase 3.
 
 ## Fase 0: repo base
 
@@ -43,5 +43,27 @@ Estado: fase 1 terminada (2026-11-18). Siguiente: fase 2.
 - Hook de pre-commit no instalado en `.git/hooks` (requiere `pipx install pre-commit && pre-commit install` en WSL).
 - Para lanzar comandos de WSL desde Windows hay que usar `wsl.exe -e`: con `wsl.exe --` el shell expande `$?` antes de tiempo.
 
+## Fase 2: núcleo Java
+
+### Qué se hizo
+- Dominio y Flyway: proyecto, licitación, tarifa, propuesta, clave de idempotencia, decisión, planning (actividades y enlaces), avance y auditoría.
+- Motor de reglas en Java puro con orden fijo (PAYLOAD, CITATIONS, TAKEOFF_UNITS_AND_SUMS, BUDGET, SCHEDULE_GRAPH, CRITICAL_PATH, CONTRACT_TERM, REVIEW_THRESHOLD) y tabla de enrutado.
+- API REST con claves por rol (AGENT propone, REVIEWER decide, ANALYST solo lee) y lista permitida; todo lo demás se deniega.
+- Auditoría append-only (triggers) con hash encadenado y `GET /api/audit/verify`; idempotencia por `Idempotency-Key`.
+- ADR 0003 con decisiones y casos límite.
+- Tests: 178 en el núcleo. CPM a mano y contra camino más largo por fuerza bruta (500 grafos), reglas una a una, 133 casos contra la verdad terreno de las 66 licitaciones (60 más 6 gemelos: ruta crítica, fechas, holguras, plazo, mediciones y presupuesto coinciden), 9 de integración con Testcontainers y Postgres real.
+- Verificado además: arranque real contra el Postgres de compose (health, 201/401, auditoría íntegra) y que el servicio no arranca con las claves de ejemplo. Mutaciones (analista con escritura, corrección sin revalidar) hacen fallar los tests.
+
+### Decisiones
+- El plazo se comprueba después del CPM porque necesita la duración (el prompt lo listaba antes).
+- El núcleo comprueba que las citas existen y están bien formadas; comprobar el texto en la página se hace en agentes (fase 4).
+- Sin Spring Security: un filtro y una tabla de permisos.
+- Testcontainers con `api.version=1.44` (Docker 29 rechaza la versión por defecto).
+- `make test-core` genera los datos si faltan; ya no hay compilación del núcleo en contenedor (necesita JDK 17+ y Docker).
+
+### Deuda conocida
+- Las claves por rol identifican el rol, no a la persona: todas las decisiones constan como REVIEWER.
+- Sin paginación en los listados (`/api/proposals`, `/api/audit`).
+
 ## Siguiente paso
-Fase 2: ejecutar prompts/02-nucleo-java.md
+Fase 3: ejecutar prompts/03-busqueda.md
