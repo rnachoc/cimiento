@@ -42,7 +42,7 @@ public class ProjectService {
             return new Created<>(existing.get(), false);
         }
         Project p = projects.save(new Project(code, name));
-        audit.append(actor, "PROJECT_CREATED", "project", p.getId(), Map.of("code", code));
+        audit.append(actor, "PROJECT_CREATED", "project", p.getId(), Map.of("code", code), code);
         return new Created<>(p, true);
     }
 
@@ -66,7 +66,7 @@ public class ProjectService {
         details.put("code", code);
         details.put("project", projectCode);
         details.put("contractTermMonths", termMonths);
-        audit.append(actor, "TENDER_CREATED", "tender", t.getId(), details);
+        audit.append(actor, "TENDER_CREATED", "tender", t.getId(), details, projectCode);
         return new Created<>(t, true);
     }
 

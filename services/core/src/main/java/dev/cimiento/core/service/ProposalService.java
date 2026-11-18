@@ -114,7 +114,7 @@ public class ProposalService {
                 json.write(eval.results()), json.write(eval.reasons()));
         p = proposals.save(p);
         idempotency.save(new IdempotencyRecord(actor.name(), idempotencyKey, requestHash, p.getId()));
-        audit.append(actor, "PROPOSAL_SUBMITTED", "proposal", p.getId(), summary(p, eval));
+        audit.append(actor, "PROPOSAL_SUBMITTED", "proposal", p.getId(), summary(p, eval), key(p));
         if (status == ProposalStatus.EXECUTED) {
             execute(p, payload, eval, Role.SYSTEM);
         }
@@ -146,7 +146,7 @@ public class ProposalService {
         details.put("type", p.getType().name());
         if (outcome == Decision.Outcome.REJECT) {
             p.markRejected();
-            audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details);
+            audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
             return p;
         }
         // Rules run again on what will actually be executed (the corrected payload, if any).
@@ -155,7 +155,7 @@ public class ProposalService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "rules fail on the payload to execute",
                     failures(eval));
         }
-        audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details);
+        audit.append(actor, "DECISION_RECORDED", "proposal", p.getId(), details, key(p));
         execute(p, payload, eval, actor);
         return p;
     }
@@ -227,7 +227,7 @@ public class ProposalService {
             throw new IllegalStateException("payload passed the rules but cannot be read", e);
         }
         p.markExecuted(json.write(payload));
-        audit.append(actor, "PROPOSAL_EXECUTED", "proposal", p.getId(), details);
+        audit.append(actor, "PROPOSAL_EXECUTED", "proposal", p.getId(), details, key(p));
     }
 
     private List<Citation> citations(Proposal p) {
@@ -236,6 +236,10 @@ public class ProposalService {
 
     private List<String> signals(Proposal p) {
         return List.of(mapper.convertValue(json.read(p.getSignals()), String[].class));
+    }
+
+    private static String key(Proposal p) {
+        return p.getTender().getProject().getCode();
     }
 
     private static Map<String, Object> summary(Proposal p, Evaluation eval) {

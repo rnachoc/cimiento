@@ -11,12 +11,23 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
 
 cimiento:
   keys:
     agent: ${CIMIENTO_AGENT_KEY:}
     analyst: ${CIMIENTO_ANALYST_KEY:}
     reviewer: ${CIMIENTO_REVIEWER_KEY:}
+  outbox:
+    # Publish audit events to Kafka (cimiento.audit). Off by default: the outbox table still fills.
+    enabled: ${CIMIENTO_OUTBOX_ENABLED:false}
   review:
     # Budgets at or above this amount (EUR, VAT excluded) always need a person.
     amount-threshold-eur: 1000000
