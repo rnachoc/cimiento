@@ -39,7 +39,7 @@ def idempotency_key(body: dict[str, Any]) -> str:
 
 class Core(Protocol):
     def register_tender(
-        self, project_code: str, code: str, title: str, term_months: int, planned_start: str
+        self, project_code: str, code: str, title: str, term_months: int | None, planned_start: str
     ) -> dict[str, Any]: ...
 
     def submit(
@@ -71,7 +71,7 @@ class CoreClient:
         return r.json()
 
     def register_tender(
-        self, project_code: str, code: str, title: str, term_months: int, planned_start: str
+        self, project_code: str, code: str, title: str, term_months: int | None, planned_start: str
     ) -> dict[str, Any]:
         return self._call(
             "POST",
@@ -114,7 +114,7 @@ class RecordingCore:
         self.proposals: list[dict[str, Any]] = []
 
     def register_tender(
-        self, project_code: str, code: str, title: str, term_months: int, planned_start: str
+        self, project_code: str, code: str, title: str, term_months: int | None, planned_start: str
     ) -> dict[str, Any]:
         check_allowed("POST", "/api/tenders")
         t = self.tenders.setdefault(

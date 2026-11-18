@@ -108,7 +108,7 @@ def test_coordinator_runs_every_tender_agent(dev_split):
         dev_split / "tenders" / "D-001", FakeModel(None), core, "2027-01-04", rates
     )
     types = [p["type"] for p in core.proposals]
-    assert types[:3] == ["BID_ANALYSIS", "TAKEOFF", "BUDGET"]
+    assert types[:4] == ["BID_ANALYSIS", "TAKEOFF", "SCHEDULE", "BUDGET"]
     assert {"REPORT", "DOCUMENT_DRAFT"} <= set(types)
     budget = next(p for p in core.proposals if p["type"] == "BUDGET")
     assert budget["payload"]["claimedTotal"] == run.budget_total

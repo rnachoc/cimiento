@@ -15,6 +15,8 @@ from .citations import Citation, TenderDocs
 from .core_client import Core
 from .injection import detect
 from .llm import Model
+from .planner import DEPENDENCIES, PlanChoice, build_schedule, crew_days, rule_based_choice
+from .planner import SYSTEM as PLANNER_SYSTEM
 from .proposal_writer import proposal_draft
 from .takeoff import SYSTEM as TAKEOFF_SYSTEM
 from .takeoff import TakeoffError, TakeoffReading, compute_items, rule_based_read
@@ -36,13 +38,13 @@ class TenderRun:
     injections: list[Citation]
     not_found: list[str]
     proposal_ids: list[int] = field(default_factory=list)
-    skipped: str | None = None
     takeoff: dict[str, str] = field(default_factory=dict)
     takeoff_dropped: int = 0
     budget_total: str | None = None
     risks: list[tuple[str, str]] = field(default_factory=list)
     recommendation: str | None = None
     errors: list[str] = field(default_factory=list)
+    schedule: dict | None = None
 
 
 def _merge(*groups: list[Citation]) -> list[Citation]:
@@ -97,14 +99,14 @@ def analyse_tender(
         injections=injections,
         not_found=[n for n in ext.not_found if n not in seen_names],
     )
-    term = run.fields.get("plazo_ejecucion_meses")
-    if term is None or not term.isdigit() or int(term) < 1:
-        run.skipped = "contract term not found; tender not registered"
-        telemetry.event("tender_skipped", tender=docs.tender)
-        return run
-
+    term_text = run.fields.get("plazo_ejecucion_meses")
+    term = int(term_text) if term_text and term_text.isdigit() and int(term_text) > 0 else None
+    if term is None:
+        # The core accepts an unknown term; its CONTRACT_TERM rule then forces human review.
+        run.errors.append("contract term not found")
+        telemetry.event("contract_term_missing", tender=docs.tender)
     tender = core.register_tender(
-        PROJECT, docs.tender, f"Licitación {docs.tender}", int(term), planned_start
+        PROJECT, docs.tender, f"Licitación {docs.tender}", term, planned_start
     )
     payload = {
         "fields": run.fields,
@@ -147,6 +149,28 @@ def _tender_agents(
         row_cites = [r.citation.model_dump() for r in rows]
         p = core.submit(tender_id, "TAKEOFF", {"items": items}, row_cites, signals)
         run.proposal_ids.append(p["id"])
+        cd = crew_days(items, rates)
+        plan_prompt = (
+            "Activities and crew-days: "
+            + ", ".join(f"{a} {float(v):.1f}" for a, v in sorted(cd.items()))
+            + "\nTypical rules (from, to, lag): "
+            + ", ".join(f"{p}->{s} {lag}" for p, s, lag in DEPENDENCIES)
+        )
+        choice = model.run(
+            "planning",
+            PLANNER_SYSTEM,
+            plan_prompt,
+            PlanChoice,
+            lambda: rule_based_choice(items, rates),
+        ).output
+        try:
+            schedule = build_schedule(items, rates, choice)  # type: ignore[arg-type]
+        except ValueError as e:
+            run.errors.append(f"planning: {e}")
+        else:
+            run.schedule = schedule
+            p = core.submit(tender_id, "SCHEDULE", schedule, row_cites[:1], signals)
+            run.proposal_ids.append(p["id"])
         lines, total = budget_lines(items, rates)
         run.budget_total = str(total)
         p = core.submit(
