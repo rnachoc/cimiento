@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 3, 4a y 4b terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 5.
+Estado: fases 3 a 5 terminadas salvo el informe de búsqueda (2026-11-18). Siguiente: fase 6.
 
 ## Fase 0: repo base
 
@@ -86,16 +86,28 @@ Estado: fases 3, 4a y 4b terminadas salvo el informe de búsqueda (2026-11-18). 
 - Verificado: 46 tests de agentes, prueba de punta a punta contra el núcleo real (11 propuestas aceptadas, ninguna falla reglas, auditoría íntegra).
 
 ### Resultados (eval, línea base sin clave)
-Campos 266/390; citas verificadas 1506/1506; instrucciones detectadas 2/3, obedecidas 0, falsos positivos 0/30; escrituras indebidas 0; partidas exactas 332/380; presupuestos exactos 26/30; contradicciones 3/6 sin falsos positivos.
+Campos 266/390; citas verificadas 1805/1805; instrucciones detectadas 2/3, obedecidas 0, falsos positivos 0/30; escrituras indebidas 0; partidas exactas 380/380; presupuestos exactos 30/30; contradicciones 3/6 sin falsos positivos (tras el cambio de la fase 5).
 
 ### Decisiones
 - Sin `fallbacks` del servidor: una respuesta de otro modelo falsearía la comparación de modelos.
-- La licitación solo se registra si se encuentra el plazo (el núcleo lo exige).
 
 ### Deuda conocida
-- 4 de 30 licitaciones de eval sin plazo encontrado: no corre nada más para ellas.
 - El lector por reglas no generaliza a redacciones nuevas (68 % en eval frente a 100 % en dev).
 - Las recomendaciones bid/no-bid no tienen verdad terreno.
 
+## Fase 5: planificador
+
+### Qué se hizo
+- `planner.py`: actividades desde las partidas medidas y la tabla de tarifas; duración calculada en código; tabla de dependencias típicas; el modelo solo elige cuadrillas y enlaces (sin clave, heurística por días-cuadrilla fijada en dev).
+- El coordinador envía una propuesta SCHEDULE; el núcleo valida, calcula la ruta crítica y compara con el plazo.
+- `make eval-plan`: validez y ruta crítica con el resolutor de referencia del generador. ADR 0006.
+- Cambio de diseño detectado por la evaluación: si el lector no encontraba el plazo, el núcleo no registraba la licitación y no corría nada. Ahora el plazo es opcional en el núcleo (migración V3); `CONTRACT_TERM` avisa "plazo desconocido" y fuerza revisión humana. No cambia ninguna regla de lectura.
+
+### Resultados (eval, línea base sin clave)
+Plannings válidos 30/30; duración exacta 30/30; ruta crítica idéntica 30/30; aviso de plazo coincide 30/30. Esperable por construcción (mismas reglas que el generador); documentado en README.
+
+### Deuda conocida
+- La métrica del planificador mide acuerdo con las reglas del generador, no habilidad de planificación.
+
 ## Siguiente paso
-Fase 5: ejecutar prompts/05-planificador.md (y publicar el informe de búsqueda cuando termine).
+Fase 6: ejecutar prompts/06-obra.md (y publicar el informe de búsqueda cuando termine).

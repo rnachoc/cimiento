@@ -41,7 +41,7 @@ Only the `evals` package reads ground truth. A test fails if any agent module me
 - **Bid/no-bid**: explicit rules in code against a fictional company profile (turnover, similar works, minimum margin). Any contradiction or planted instruction gives REVIEW. A model may only write the narrative.
 - **Proposal writer**: a template; every section names its source field (cited) or is a fixed company statement. Always a draft.
 - **Q&A**: search, then an answer with a verified citation, or "No consta en los documentos." An answer whose citation does not verify is replaced by "no consta".
-- The coordinator registers a tender in the core only when the contract term was found, because the core requires it. When the reader misses the term, nothing else runs for that tender; the eval reports these tenders.
+- When the reader misses the contract term, the tender is still registered without it (see ADR 0006); the core then sends its schedule to a person.
 
 ## Consequences
 - Keyless numbers measure the rule-based reader, not a model. They are a floor for comparison and are labelled "keyless baseline".
