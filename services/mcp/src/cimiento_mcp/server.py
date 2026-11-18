@@ -108,6 +108,12 @@ def build_server(core: ReadOnlyCore, search: SearchClient | None = None) -> MCPS
         ]
 
     @server.tool(annotations=READ_ONLY)
+    def get_portfolio() -> list[dict]:
+        """Bid pipeline: every tender with its stage, submission deadline, bid/no-bid
+        recommendation and how many proposals wait for review."""
+        return mask(core.get("/api/portfolio"))
+
+    @server.tool(annotations=READ_ONLY)
     def get_proposal(proposal_id: int) -> dict:
         """One proposal with its payload, citations, rule results and routing reasons."""
         return mask(core.get(f"/api/proposals/{proposal_id}"))

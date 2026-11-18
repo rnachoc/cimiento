@@ -44,6 +44,9 @@ ROUTES = {
     "/api/proposals/7": PROPOSAL,
     "/api/audit": [{"seq": 1, "action": "PROPOSAL_SUBMITTED", "details": {"type": "BUDGET"}}],
     "/api/audit/verify": {"valid": True, "entries": 1},
+    "/api/portfolio": [
+        {"tenderId": 1, "code": "E-003", "stage": "UNDER_REVIEW", "bidDeadline": "2027-02-15"}
+    ],
 }
 
 
@@ -101,6 +104,7 @@ def test_every_tool_is_read_only_and_reads_through_the_analyst_key():
         "read_audit",
         "verify_audit",
         "search_documents",
+        "get_portfolio",
     }
     assert all(t.annotations.read_only_hint and not t.annotations.destructive_hint for t in tools)
     wire = tools[0].annotations.model_dump(by_alias=True, exclude_none=True)
@@ -115,6 +119,7 @@ def test_every_tool_is_read_only_and_reads_through_the_analyst_key():
     assert call(server, "list_proposals", {"status": "PENDING_REVIEW"})[0]["id"] == 7
     assert call(server, "read_audit", {"after_seq": 0})[0]["action"] == "PROPOSAL_SUBMITTED"
     assert call(server, "verify_audit")["valid"] is True
+    assert call(server, "get_portfolio")[0]["stage"] == "UNDER_REVIEW"
     assert {r.method for r in seen} == {"GET"}
     assert all(r.headers["X-Api-Key"] == KEY for r in seen)
     assert any(r.url.params.get("status") == "PENDING_REVIEW" for r in seen)
