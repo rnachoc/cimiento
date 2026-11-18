@@ -2,26 +2,10 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 COMPOSE := docker compose -f deploy/docker-compose.yml --env-file .env
-MAVEN_IMAGE := maven:3.9.11-eclipse-temurin-17
 export UV_LINK_MODE ?= copy
 
-# CORE_JDK=auto uses the local JDK when present, otherwise a JDK 17 container.
-# CORE_JDK=docker forces the container. The container runs as the host user so
-# build output is not owned by root; its Maven cache lives in services/core/.m2repo.
-CORE_JDK ?= auto
-ifeq ($(CORE_JDK),auto)
-ifeq ($(shell command -v java 2>/dev/null),)
-CORE_JDK := docker
-else
-CORE_JDK := local
-endif
-endif
-ifeq ($(CORE_JDK),docker)
-CORE_MVN := docker run --rm --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e MAVEN_USER_HOME=/w/.m2repo \
-	-v "$(CURDIR)/services/core:/w" -w /w $(MAVEN_IMAGE) ./mvnw -Dmaven.repo.local=/w/.m2repo/repository
-else
+# The core needs a local JDK 17+ and Docker (integration tests use Testcontainers).
 CORE_MVN := cd services/core && ./mvnw
-endif
 
 PY_SERVICES := data/generator services/agents services/mcp
 DATA_DIR := data/generated
@@ -47,8 +31,15 @@ down: .env ## Stop local services (keeps volumes)
 test: test-core test-py ## Run every test suite
 
 .PHONY: test-core
-test-core:
+test-core: data-if-missing
+	@command -v java >/dev/null || { echo "JDK 17+ is required for the core (see docs/decisions/0001)"; exit 2; }
 	$(CORE_MVN) -q -B verify
+
+# The core checks its engine against the generated ground truth.
+.PHONY: data-if-missing
+data-if-missing:
+	@if [ ! -f "$(DATA_DIR)/dev/manifest.json" ] || [ ! -f "$(DATA_DIR)/eval/manifest.json" ]; then \
+	  $(MAKE) --no-print-directory data; fi
 
 .PHONY: test-py
 test-py:

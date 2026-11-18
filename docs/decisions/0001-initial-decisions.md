@@ -23,7 +23,7 @@ Without `ANTHROPIC_API_KEY` the agents use a deterministic fake model (recorded 
 All data is generated from a seed. There is a development split (`SEED=42`) and an evaluation split (`SEED=1337`) with held-out wording templates. Published numbers come only from the evaluation split. No real companies or people appear in the data.
 
 ### Development environment
-The author works on Windows 11. `make` targets run in a Linux shell: WSL2 (Ubuntu) locally and `ubuntu-24.04` in CI. Docker Desktop provides the containers. If no local JDK is found, `make test` builds the core inside a `maven:3.9.11-eclipse-temurin-17` container.
+The author works on Windows 11. `make` targets run in a Linux shell: WSL2 (Ubuntu) locally and `ubuntu-24.04` in CI. Docker Desktop provides the containers. Building and testing the core needs a local JDK 17 or later and Docker (its integration tests use Testcontainers).
 
 ### Secrets
 No secrets in code. `.env.example` holds placeholders only; `.env` is git-ignored. gitleaks runs in pre-commit and in CI over the full history.
