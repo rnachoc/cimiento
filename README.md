@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **phases 0 to 13 done; the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
+> Status: **phases 0 to 14 done; the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
 
 ## What it does
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -12,6 +12,9 @@ A multi-agent AI system for construction: tender analysis, scheduling, site prog
 5. **Human review**: a console where a person approves, corrects or rejects.
 6. **Bid pipeline**: every tender by stage, from first read to awarded or discarded, with its submission deadline and recommendation; the core refuses moves that skip its rules (no bid decision without an approved bid analysis and a written reason, no submission while proposals wait for review).
 7. **Exports**: an approved schedule downloads as Microsoft Project XML and a budget as BC3 (FIEBDC-3), built by code from the core's own calculations.
+8. **Tender file**: one page per tender with what the documents say (each fact with document and page), the computed budget, the schedule with its critical path, risks, reports and the stage history.
+9. **Site progress**: the progress curve, late activities, alarms when a delay exceeds the float and the impact on the end date, computed by the core.
+10. **Management view**: pipeline by stage, budget in play and awarded, win rate, review load, time per stage and upcoming deadlines.
 
 Out of scope: reading CAD drawings or images, importing files back from MS Project, Primavera or budget software, real data, multi-user accounts.
 
@@ -87,6 +90,12 @@ Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with 
 ![Proposal detail with schedule, rules, citations and decision](docs/images/console-detail.png)
 
 ![Bid pipeline by stage with deadlines and recommendations](docs/images/console-portfolio.png)
+
+![Tender file with facts, citations, budget, schedule, risks and history](docs/images/console-ficha.png)
+
+![Site progress with the progress curve, alarms and impact on the end date](docs/images/console-obra.png)
+
+![Management view with pipeline, money, review load and decisions](docs/images/console-direccion.png)
 
 ## Use it from an assistant (MCP)
 The read-only MCP server exposes projects, tenders, the bid pipeline, schedules with critical path, proposals with citations, the audit log and document search. It uses the ANALYST key, so the core refuses any write; prices and planted instructions are masked. Example configuration (Claude Desktop or Claude Code):
@@ -165,7 +174,7 @@ Measured by `make eval-site` on the eval split. Report: [evals/reports/site.md](
 | Impact on the project end exact | 26/30 |
 | Reports drafted, every sentence with an existing source | 90 |
 
-When a delayed activity has not started yet at the cut date, the data only gives a lower bound of its delay (10 cases on eval); the 4 impact misses and the 2 alarm disagreements come from those cases.
+When a delayed activity has not started yet at the cut date, the data only gives a lower bound of its delay (10 cases on eval); the 4 impact misses and the 2 alarm disagreements come from those cases. The core's own site calculation (used by the console) agrees with the ground truth on all 66 generated sites for every activity already started (386 delays exact), on 400 of 402 alarms, and on the end-date impact whenever no delay is a lower bound (`SiteTest`, run by `make test`); the console marks the other impacts as "at least".
 
 ### Agents with Claude
 **Not measured yet.** No result in this README comes from a real model. The tooling is ready: `make eval-real` sends the eval prompts through the Batch API (half price) with your own key, stores the answers as recordings with model and date, and scores them with the same evals and scorecard. Without `CONFIRM=1` it only counts the requests of the first stage; nothing is sent. A confirmed run reports tokens and batch cost per model.
@@ -203,6 +212,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 11 | Full evals and real-model run | scorecard, CI gate and Batch API tooling done; real-model run not done |
 | 12 | Documentation, keyless demo, video script | done |
 | 13 | Bid pipeline and MS Project / BC3 exports | done |
+| 14 | Tender file, site progress view and management view | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 

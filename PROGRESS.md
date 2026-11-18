@@ -1,6 +1,6 @@
 # PROGRESS
 
-Estado: fases 0 a 13 terminadas salvo la ejecución con Claude real de la fase 11 (herramienta lista, sin ejecutar) (2026-11-18).
+Estado: fases 0 a 14 terminadas salvo la ejecución con Claude real de la fase 11 (herramienta lista, sin ejecutar) (2026-11-18).
 
 ## Fase 0: repo base
 
@@ -206,6 +206,14 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Aprender de las correcciones del revisor (guardar correcciones y aplicarlas en la siguiente licitación, medido con el eval).
 - Riesgos de obra con propuesta de mitigación (plazo, coste, suministro) y informe de desviaciones.
 - Exportar e importar datos de la empresa (tarifas, plantillas) y borrado de datos.
+
+## Fase 14: ficha de licitación, seguimiento de obra y dirección
+
+### Qué se hizo
+- Núcleo: `rules/Site.java` (curva ponderada por duración, retraso por actividad con cota inferior si no ha empezado, alarma si supera la holgura, impacto con el CPM y si es cota inferior), `rules/Metrics.java` (etapas, tasa de éxito, importes, tiempo medio por etapa, carga de revisión, decisiones, vencimientos a 30 días). Endpoints `GET /api/tenders/{id}/site`, `GET /api/dashboard`, `GET /api/portfolio/{id}`. El `PROGRESS_UPDATE` admite `history` (semanas anteriores), validado por las reglas.
+- Agentes: el avance semanal envía el historial de semanas.
+- Consola: Ficha de licitación (`/licitaciones/:id`), Seguimiento de obra con curva S en SVG propio (`/obra/:id`), Dirección (`/direccion`); enlaces desde la cartera y el detalle; navegación Bandeja/Cartera/Dirección.
+- Verificación: `SiteTest` contra la verdad terreno de las 66 obras (386 retrasos exactos, 400/402 alarmas, impacto exacto cuando no hay cotas inferiores), `MetricsTest`, 2 tests de integración, 6 de consola, e2e ampliado; revisión visual en escritorio y móvil sin errores de consola ni desbordamiento.
 
 ## Siguiente paso
 Decisión del autor: ejecución real con Claude y etiqueta v1.1.0 para la fase 13.

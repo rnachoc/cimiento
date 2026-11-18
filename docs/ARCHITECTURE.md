@@ -143,6 +143,12 @@ stateDiagram-v2
 
 `GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain.
 
+## Site progress and management figures
+
+- `GET /api/tenders/{id}/site` analyses the latest live schedule and weekly progress (`rules/Site.java`): the progress curve weighted by activity duration, the delay of each activity at the cut date (a lower bound when it has not started), the alarm when the delay exceeds the total float, and the impact on the project end with the core's CPM. The weekly progress proposal carries the earlier weeks; the rules check they come before the status week. A test runs it on every generated site against the ground truth.
+- `GET /api/dashboard` (`rules/Metrics.java`): tenders by stage, win rate, budget in the pipeline and awarded, mean time per stage, review load, how reviewers decide and deadlines within 30 days.
+- `GET /api/portfolio/{id}` feeds the tender file in the console, which gathers facts with citations, budget, schedule, risks, reports and stage history.
+
 ## Exports
 
 `GET /api/proposals/{id}/export` turns a schedule into Microsoft Project XML (MSPDI) and a budget into FIEBDC-3 (BC3). Both files are built by code from the core's CPM and the company rates, never by a model. Failed or rejected proposals cannot be exported; a pending one is named as a draft.
