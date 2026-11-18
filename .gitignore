@@ -20,6 +20,9 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 .m2repo/
 
+# Generated synthetic data (reproducible with make data)
+data/generated/
+
 # Node
 node_modules/
 dist/

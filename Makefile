@@ -23,7 +23,10 @@ else
 CORE_MVN := cd services/core && ./mvnw
 endif
 
-PY_SERVICES := services/agents services/mcp
+PY_SERVICES := data/generator services/agents services/mcp
+DATA_DIR := data/generated
+DEV_SEED := 42
+EVAL_SEED := 1337
 
 .PHONY: help
 help: ## List targets
@@ -56,8 +59,15 @@ lint: ## Lint and format checks
 	@for s in $(PY_SERVICES); do echo "== $$s"; (cd $$s && uv run ruff check . && uv run ruff format --check .) || exit 1; done
 
 .PHONY: data
-data: ## Generate synthetic data (phase 1)
-	@echo "Not implemented yet: arrives in phase 1." && exit 1
+data: ## Generate both splits (dev 42, eval 1337); or SPLIT=dev|eval and/or SEED=n (SEED alone means dev)
+	@set -e; \
+	if [ -n "$(SPLIT)" ]; then splits="$(SPLIT)"; elif [ -n "$(SEED)" ]; then splits=dev; else splits="dev eval"; fi; \
+	for s in $$splits; do \
+	  case $$s in dev) seed=$(DEV_SEED);; eval) seed=$(EVAL_SEED);; *) echo "SPLIT must be dev or eval"; exit 2;; esac; \
+	  if [ -n "$(SEED)" ]; then seed=$(SEED); fi; \
+	  rm -rf "$(DATA_DIR)/$$s"; \
+	  (cd data/generator && uv run cimiento-data --seed $$seed --split $$s --out "../generated/$$s"); \
+	done
 
 .PHONY: demo
 demo: ## Keyless end-to-end demo (phase 12)
