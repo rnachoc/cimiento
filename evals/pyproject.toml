@@ -3,13 +3,14 @@ name = "cimiento-evals"
 version = "0.1.0"
 description = "Cimiento evaluations against synthetic ground truth"
 requires-python = ">=3.12,<3.13"
-dependencies = ["cimiento-agents"]
+dependencies = ["cimiento-agents", "cimiento-data"]
 
 [project.scripts]
 cimiento-evals = "cimiento_evals.cli:main"
 
 [tool.uv.sources]
 cimiento-agents = { path = "../services/agents", editable = true }
+cimiento-data = { path = "../data/generator", editable = true }
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.8"]

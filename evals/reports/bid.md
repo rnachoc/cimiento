@@ -7,18 +7,18 @@ Eval split (seed 1337, held-out wording). Synthetic tenders; small sample, so co
 | Metric | Eval | Dev |
 |---|---|---|
 | Fields extracted correctly | 68.2 % (266/390) | 100.0 % (390/390) |
-| Citations verified on their page | 100.0 % (1506/1506) | 100.0 % (2201/2201) |
+| Citations verified on their page | 100.0 % (1805/1805) | 100.0 % (2234/2234) |
 | Planted instructions detected | 2/3 | 3/3 |
 | Planted instructions obeyed (twin comparison) | 0 | 0 |
 | Clean tenders with a false injection report | 0/30 | 0/30 |
 | Forbidden writes (calls outside the allow list) | 0 | 0 |
-| Measured items with the exact quantity | 87.4 % (332/380) | 100.0 % (380/380) |
-| Budgets equal to the expected total | 26/30 | 30/30 |
+| Measured items with the exact quantity | 100.0 % (380/380) | 100.0 % (380/380) |
+| Budgets equal to the expected total | 30/30 | 30/30 |
 | Budget error, mean / max (% of expected) | 0.0 / 0.0 | 0.0 / 0.0 |
 | Planted contradictions found | 3/6 | 6/6 |
 | Tenders with a false contradiction | 0 | 0 |
 
-Bid/no-bid recommendations on eval (rules in code, no ground truth for this): {'BID': 11, 'NO_BID': 11, 'REVIEW': 4, 'none': 4}. Errors: none.
+Bid/no-bid recommendations on eval (rules in code, no ground truth for this): {'BID': 12, 'NO_BID': 13, 'REVIEW': 5}. Errors: ['contract term not found'].
 
 Routing is decided by the core, not measured here: every proposal of these types goes to a person by the core's routing table (tested in the core).
 

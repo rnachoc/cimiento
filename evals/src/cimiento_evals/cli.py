@@ -23,7 +23,24 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--data", type=Path, default=Path("data/generated"))
     b.add_argument("--out", type=Path, default=Path("evals/reports"))
     b.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
+    pl = sub.add_parser("plan", help="planner: valid schedules, duration error, critical path")
+    pl.add_argument("--data", type=Path, default=Path("data/generated"))
+    pl.add_argument("--out", type=Path, default=Path("evals/reports"))
+    pl.add_argument("--recordings", type=Path, default=Path("evals/recordings"))
     args = parser.parse_args(argv)
+
+    if args.cmd == "plan":
+        from cimiento_agents.llm import FakeModel, Recordings, model_from_env
+
+        from .plan import evaluate as evaluate_plan
+
+        model = model_from_env(Recordings(args.recordings) if args.recordings.exists() else None)
+        label = (
+            "keyless baseline (rule-based planner)" if isinstance(model, FakeModel) else "Claude"
+        )
+        evaluate_plan(args.data, model, args.out, label)
+        print((args.out / "plan.md").read_text(encoding="utf-8"))
+        return 0
 
     if args.cmd == "bid":
         from cimiento_agents.llm import Recordings, model_from_env

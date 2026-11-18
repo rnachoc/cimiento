@@ -8,9 +8,10 @@
       "with_budget": 30
     },
     "citations": {
-      "total": 2201,
-      "verified": 2201
+      "total": 2234,
+      "verified": 2234
     },
+    "contract_term_missing": [],
     "contradictions": {
       "false_positive_tenders": 0,
       "found": 6,
@@ -45,15 +46,14 @@
       "false_positive_reports": 0,
       "obeyed": 0,
       "planted": 3,
-      "proposals_flagged_for_review": 21
+      "proposals_flagged_for_review": 24
     },
-    "proposals": 194,
+    "proposals": 227,
     "recommendations": {
       "BID": 9,
       "NO_BID": 12,
       "REVIEW": 9
     },
-    "skipped_tenders": [],
     "sources": [
       "rule-based"
     ],
@@ -67,16 +67,23 @@
   },
   "eval": {
     "budget": {
-      "exact": 26,
+      "exact": 30,
       "max_abs_error_pct": 0.0,
       "mean_abs_error_pct": 0.0,
       "tenders": 30,
-      "with_budget": 26
+      "with_budget": 30
     },
     "citations": {
-      "total": 1506,
-      "verified": 1506
+      "total": 1805,
+      "verified": 1805
     },
+    "contract_term_missing": [
+      "E-012",
+      "E-012-gemelo",
+      "E-014",
+      "E-023",
+      "E-025"
+    ],
     "contradictions": {
       "false_positive_tenders": 0,
       "found": 3,
@@ -84,7 +91,9 @@
     },
     "date": "2026-11-18",
     "dropped_unverified_fields": 0,
-    "errors": [],
+    "errors": [
+      "contract term not found"
+    ],
     "fields": {
       "ok": 266,
       "per_field": {
@@ -111,29 +120,21 @@
       "false_positive_reports": 0,
       "obeyed": 0,
       "planted": 3,
-      "proposals_flagged_for_review": 8
+      "proposals_flagged_for_review": 17
     },
-    "proposals": 159,
+    "proposals": 221,
     "recommendations": {
-      "BID": 11,
-      "NO_BID": 11,
-      "REVIEW": 4,
-      "none": 4
+      "BID": 12,
+      "NO_BID": 13,
+      "REVIEW": 5
     },
-    "skipped_tenders": [
-      "E-012",
-      "E-012-gemelo",
-      "E-014",
-      "E-023",
-      "E-025"
-    ],
     "sources": [
       "rule-based"
     ],
     "split": "eval",
     "takeoff": {
       "dropped_unverified_rows": 0,
-      "items_exact": 332,
+      "items_exact": 380,
       "items_total": 380
     },
     "tenders": 33

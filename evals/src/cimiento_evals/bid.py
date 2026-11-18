@@ -185,7 +185,9 @@ def run(split_dir: Path, model: Model) -> dict:
         "recommendations": dict(sorted(recommendations.items())),
         "errors": sorted({e for r in runs.values() for e in r.errors}),
         "proposals": len(core.proposals),
-        "skipped_tenders": sorted(t for t, r in runs.items() if r.skipped),
+        "contract_term_missing": sorted(
+            t for t, r in runs.items() if "contract term not found" in r.errors
+        ),
         "dropped_unverified_fields": sum(r.dropped_unverified for r in runs.values()),
     }
 
