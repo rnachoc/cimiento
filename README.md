@@ -86,6 +86,8 @@ Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with 
 
 ![Proposal detail with schedule, rules, citations and decision](docs/images/console-detail.png)
 
+![Bid pipeline by stage with deadlines and recommendations](docs/images/console-portfolio.png)
+
 ## Use it from an assistant (MCP)
 The read-only MCP server exposes projects, tenders, the bid pipeline, schedules with critical path, proposals with citations, the audit log and document search. It uses the ANALYST key, so the core refuses any write; prices and planted instructions are masked. Example configuration (Claude Desktop or Claude Code):
 
