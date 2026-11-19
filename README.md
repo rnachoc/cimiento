@@ -83,7 +83,7 @@ One trace per tender with a span per agent, per model call (GenAI conventions: m
 Everything runs without any key: the agents then use the rule-based reader (keyless baseline) and cost nothing. To use Claude, put **your own** Anthropic API key in your local `.env` (`ANTHROPIC_API_KEY=...`, created at console.anthropic.com). Calls are billed to the account that owns that key. `.env` is git-ignored and never shared; no key is stored in this repository. Results of the author's real-model run are published as recorded answers, so you can replay them for free.
 
 ## Review console
-Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Cartera** view shows the bid pipeline by stage with deadline countdowns; schedules and budgets download as MS Project XML or BC3. Every decision is signed by a person (estimating, site manager or management): the core checks who may decide what, keeps amounts over the threshold for management, and makes a second person approve any correction. The browser never holds a key (nginx adds the REVIEWER key, the person travels in an HttpOnly session cookie) and a strict Content-Security-Policy applies.
+Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Certificaciones** view values the executed work each month from the approved budget and the weekly progress, with retention and VAT, and a site manager or manager issues it. The **Cartera** view shows the bid pipeline by stage with deadline countdowns; schedules and budgets download as MS Project XML or BC3. Every decision is signed by a person (estimating, site manager or management): the core checks who may decide what, keeps amounts over the threshold for management, and makes a second person approve any correction. The browser never holds a key (nginx adds the REVIEWER key, the person travels in an HttpOnly session cookie) and a strict Content-Security-Policy applies.
 
 ![Inbox of the review console](docs/images/console-inbox.png)
 
@@ -214,6 +214,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 13 | Bid pipeline and MS Project / BC3 exports | done |
 | 14 | Tender file, site progress view and management view | done |
 | 15 | People, roles and segregation of duties | done |
+| 18 | Monthly certifications of site work | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 

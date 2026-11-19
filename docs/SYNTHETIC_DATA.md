@@ -37,6 +37,7 @@ Todo sale de una semilla y es reproducible. Empresa ficticia: Constructora Brisa
 - **Partida duplicada**: fila idéntica (código, ubicación, unidad y cantidad) justo después de otra. Cuenta una sola vez. Filas del mismo código en ubicaciones distintas sí se suman.
 - **Plazo frente al planning**: el planning supera el plazo si la fecha del último día laborable es posterior a `fecha_inicio + N meses - 1 día` (meses naturales).
 - **Alarma de obra**: una actividad da alarma si su retraso en días laborables es mayor que su holgura total. El impacto en el fin de obra se calcula repitiendo el CPM con las actividades retrasadas alargadas en su retraso.
+- **Certificación mensual**: el corte de un mes es la última semana de avance cuyo último día laborable cae en ese mes. Importe a origen de una partida = importe de la partida x avance real de su actividad en el corte / 100, con 2 decimales (HALF_UP). Periodo = a origen menos lo ya certificado. Se comprueba, en las 66 obras con avance, que el a origen del último corte coincide al céntimo con la suma calculada de forma independiente desde el presupuesto y el CSV, y que los periodos de todos los meses suman ese a origen. Retención e IVA son parámetros ficticios.
 - **Identificadores**: `D-001` a `D-030` en desarrollo y `E-001` a `E-030` en evaluación. El gemelo de `E-007` es `E-007-gemelo`.
 
 ## Qué se mide (línea base comprometida en evals/baseline.json)

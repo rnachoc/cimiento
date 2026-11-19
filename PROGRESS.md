@@ -229,5 +229,16 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Sin proveedor de identidad (OIDC/SAML), sin bloqueo por intentos fallidos ni recuperación de token.
 - La demo va por HTTP en localhost, así que la cookie no lleva `Secure` (sí detrás de HTTPS).
 
+## Fase 18: certificaciones mensuales
+
+### Qué se hizo
+- Núcleo: `rules/Certification.java` (corte del mes en la última semana de avance que cierra dentro de él, a origen por partida = importe x % de su actividad, anterior = último certificado emitido, periodo, retención e IVA configurables, reglas que bloquean). V7: `certification` inmutable (trigger que rechaza UPDATE y DELETE). `GET /api/tenders/{id}/certification?month=`, `GET .../certifications`, `POST .../certifications` (jefatura de obra o gerencia; el núcleo recalcula y no acepta importes). Auditoría `CERTIFICATION_ISSUED` con la persona. MCP: `get_certifications` solo con totales.
+- Consola: `/certificaciones/:id` (selector de mes, relación valorada por actividad, totales, motivos que bloquean, emitir con motivo si está desactivado, emitidas), enlazada desde la ficha y el seguimiento de obra.
+- Tests: `CertificationTest` (10, con las 66 obras al céntimo), 1 de integración, 1 de autoridad, 3 specs de consola, 1 e2e en Chromium y 1 del MCP. ADR 0014.
+
+### Deuda conocida
+- Sin exportación a PDF ni BC3 de la certificación, sin revisión de precios ni facturación.
+- Si cambia el presupuesto aprobado después de certificar, una partida puede quedar por debajo de lo certificado y el núcleo rechaza el mes.
+
 ## Siguiente paso
-Fase 16: calendario laboral en el CPM (revisar antes `rules/WorkCalendar.java`). Después: 17 modificados, 18 certificaciones, 19 revisión previa a la presentación. La ejecución real con Claude queda aparcada por decisión del autor.
+Hechas la 15 y la 18. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.

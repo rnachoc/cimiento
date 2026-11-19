@@ -146,6 +146,7 @@ stateDiagram-v2
 ## Site progress and management figures
 
 - `GET /api/tenders/{id}/site` analyses the latest live schedule and weekly progress (`rules/Site.java`): the progress curve weighted by activity duration, the delay of each activity at the cut date (a lower bound when it has not started), the alarm when the delay exceeds the total float, and the impact on the project end with the core's CPM. The weekly progress proposal carries the earlier weeks; the rules check they come before the status week. A test runs it on every generated site against the ground truth.
+- `GET /api/tenders/{id}/certification?month=` previews the monthly certification and `POST /api/tenders/{id}/certifications` issues it (`rules/Certification.java`, ADR 0014): budget lines valued by the percent done of their activity at the last progress week of the month, minus what was already certified, with retention and VAT. The core always recalculates; a signed-in site manager or manager issues it; the snapshot is immutable and audited.
 - `GET /api/dashboard` (`rules/Metrics.java`): tenders by stage, win rate, budget in the pipeline and awarded, mean time per stage, review load, how reviewers decide and deadlines within 30 days.
 - `GET /api/portfolio/{id}` feeds the tender file in the console, which gathers facts with citations, budget, schedule, risks, reports and stage history.
 
@@ -200,3 +201,4 @@ One trace per tender (`cimiento.tender`) with a span per agent, per model call (
 | [0011](decisions/0011-observability-and-cost.md) | Observability and cost |
 | [0012](decisions/0012-pipeline-and-exports.md) | Bid pipeline and file exports |
 | [0013](decisions/0013-people-and-segregation.md) | People, roles and segregation of duties |
+| [0014](decisions/0014-monthly-certifications.md) | Monthly certifications |
