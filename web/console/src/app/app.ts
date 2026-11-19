@@ -13,11 +13,13 @@ import { Session } from './session';
         <span class="mark" aria-hidden="true"></span>
         <span class="brand-name">Cimiento</span>
       </a>
+      @if (session.person()) {
       <nav class="nav" aria-label="Secciones">
         <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Bandeja</a>
         <a routerLink="/cartera" routerLinkActive="on" ariaCurrentWhenActive="page">Cartera</a>
         <a routerLink="/direccion" routerLinkActive="on" ariaCurrentWhenActive="page">Dirección</a>
       </nav>
+      }
       @if (session.person(); as me) {
         <span class="who" data-testid="who" [title]="'Sesión de ' + me.displayName">
           {{ me.displayName }} <span class="role">· {{ roles[me.role] }}</span>
