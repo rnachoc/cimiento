@@ -37,7 +37,8 @@ public class PortfolioService {
     public record Item(Long tenderId, String code, String title, String projectCode, TenderStage stage,
                        Instant createdAt, Instant stageChangedAt, LocalDate bidDeadline, boolean deadlineApproved,
                        String recommendation, java.math.BigDecimal budgetTotal, int pendingReviews, int proposals,
-                       boolean bidAnalysisApproved, List<TenderStage> next) {
+                       boolean bidAnalysisApproved, List<TenderStage> next, TenderStage revertTo,
+                       String lastMovedBy) {
     }
 
     private final TenderRepository tenders;
@@ -127,11 +128,52 @@ public class PortfolioService {
         java.math.BigDecimal budget = latest(ps, ProposalType.BUDGET, n -> true)
                 .map(p -> decimal(content(p).path("claimedTotal").asText(null)))
                 .orElse(null);
+        List<TenderStageChange> history = changes.findByTenderIdOrderById(t.getId());
+        Pipeline.LastMove last = history.isEmpty() ? null : lastMove(history.get(history.size() - 1));
         return new Item(t.getId(), t.getCode(), t.getTitle(), t.getProject().getCode(), t.getStage(),
                 t.getCreatedAt(), t.getStageChangedAt(), deadline,
                 deadline != null && bid.get().getStatus() == ProposalStatus.EXECUTED, recommendation, budget,
                 facts.pendingReviews(), ps.size(), facts.bidAnalysisApproved(),
-                t.getStage().next().stream().sorted(Comparator.comparingInt(Enum::ordinal)).toList());
+                t.getStage().next().stream().sorted(Comparator.comparingInt(Enum::ordinal)).toList(),
+                Pipeline.revertTarget(t.getStage(), last), last == null ? null : last.person());
+    }
+
+    private static Pipeline.LastMove lastMove(TenderStageChange c) {
+        return new Pipeline.LastMove(c.getFromStage(), c.getToStage(), c.getPerson(), c.isRevert());
+    }
+
+    /** Takes the last stage move back: a new, audited move to the previous stage; nothing is deleted. */
+    @Transactional
+    public Item revert(Actor actor, Long tenderId, String note) {
+        if (actor.person() == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "sign in as a person to undo a move");
+        }
+        Tender t = tenders.lockById(tenderId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "tender " + tenderId + " not found"));
+        List<TenderStageChange> history = changes.findByTenderIdOrderById(tenderId);
+        Pipeline.LastMove last = history.isEmpty() ? null : lastMove(history.get(history.size() - 1));
+        if (last != null) {
+            List<Authority.Broken> broken = Authority.checkStage(actor.personRole(), last.from());
+            if (!broken.isEmpty()) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "undo not allowed for " + actor.person(), broken);
+            }
+        }
+        String reason = note == null || note.isBlank() ? null : note.strip();
+        List<String> errors = Pipeline.checkRevert(t.getStage(), last, actor.person(),
+                actor.personRole() == dev.cimiento.core.rules.PersonRole.MANAGEMENT, reason);
+        if (!errors.isEmpty()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "undo not allowed", errors);
+        }
+        TenderStage from = t.getStage();
+        TenderStage to = last.from();
+        t.moveTo(to);
+        changes.save(new TenderStageChange(t.getId(), from, to, reason, actor.role().name(), actor.person(), true));
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("code", t.getCode());
+        details.put("from", from.name());
+        details.put("to", to.name());
+        audit.append(actor, "TENDER_STAGE_REVERTED", "tender", t.getId(), details, t.getProject().getCode());
+        return item(t, proposals.findByTenderIdOrderById(tenderId));
     }
 
     /** Latest live proposal of a type (pending or executed), optionally filtered on its content. */

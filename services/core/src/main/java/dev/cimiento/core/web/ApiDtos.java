@@ -35,9 +35,12 @@ public final class ApiDtos {
                                @jakarta.validation.constraints.Size(max = 500) String note) {
     }
 
+    public record RevertRequest(@jakarta.validation.constraints.Size(max = 500) String note) {
+    }
+
     public record StageChangeView(Long id, dev.cimiento.core.rules.TenderStage from,
                                   dev.cimiento.core.rules.TenderStage to, String note, String actorRole,
-                                  String person, java.time.Instant at) {
+                                  String person, java.time.Instant at, boolean revert) {
     }
 
     public record SubmitProposal(@NotNull Long tenderId, @NotNull ProposalType type, @NotNull JsonNode payload,

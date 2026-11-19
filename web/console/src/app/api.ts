@@ -37,8 +37,9 @@ export interface PortfolioItem {
   tenderId: number; code: string; title: string; projectCode: string; stage: Stage; createdAt: string;
   stageChangedAt: string | null; bidDeadline: string | null; deadlineApproved: boolean; recommendation: string | null;
   budgetTotal: number | null; pendingReviews: number; proposals: number; bidAnalysisApproved: boolean; next: Stage[];
+  revertTo: Stage | null; lastMovedBy: string | null;
 }
-export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; person?: string | null; at: string; }
+export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; person?: string | null; at: string; revert?: boolean; }
 export type PersonRole = 'ESTIMATING' | 'SITE_MANAGER' | 'MANAGEMENT';
 export interface Person { username: string; displayName: string; role: PersonRole; scope: string[]; }
 export interface CurvePoint { week: number; plannedPct: number; actualPct: number; }
@@ -109,6 +110,10 @@ export class Api {
 
   stages(tenderId: number): Observable<StageChange[]> {
     return this.http.get<StageChange[]>(`/api/tenders/${tenderId}/stages`);
+  }
+
+  revertStage(tenderId: number, note: string): Observable<PortfolioItem> {
+    return this.http.post<PortfolioItem>(`/api/tenders/${tenderId}/stage/revert`, { note });
   }
 
   site(tenderId: number): Observable<SiteView> {

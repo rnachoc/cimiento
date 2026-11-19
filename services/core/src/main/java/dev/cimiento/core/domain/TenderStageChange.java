@@ -40,6 +40,9 @@ public class TenderStageChange {
     @Column
     private String person;
 
+    @Column(nullable = false)
+    private boolean revert;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -54,6 +57,16 @@ public class TenderStageChange {
         this.toStage = toStage;
         this.note = note;
         this.actorRole = actorRole;
+    }
+
+    public TenderStageChange(Long tenderId, TenderStage fromStage, TenderStage toStage, String note, String actorRole,
+                             String person, boolean revert) {
+        this(tenderId, fromStage, toStage, note, actorRole, person);
+        this.revert = revert;
+    }
+
+    public boolean isRevert() {
+        return revert;
     }
 
     public Long getId() {

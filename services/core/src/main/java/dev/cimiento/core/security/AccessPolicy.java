@@ -24,6 +24,7 @@ public final class AccessPolicy {
             new Rule("DELETE", Pattern.compile("/api/session"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders"), Set.of(Role.AGENT, Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/stage"), Set.of(Role.REVIEWER)),
+            new Rule("POST", Pattern.compile("/api/tenders/\\d+/stage/revert"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/certifications"), Set.of(Role.REVIEWER)));
 
     private AccessPolicy() {

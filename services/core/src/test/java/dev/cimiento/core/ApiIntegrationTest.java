@@ -535,6 +535,52 @@ class ApiIntegrationTest {
         assertThat(history.get(1).get("person").asText()).isEqualTo("gerencia");
     }
 
+    private ResultActions revert(String note) throws Exception {
+        return call("POST", "/api/tenders/" + tenderId + "/stage/revert", REVIEWER,
+                note == null ? "{}" : "{'note':'" + note + "'}", null);
+    }
+
+    @Test
+    void aMisclickedStageMoveIsTakenBackByItsAuthorOrManagementAndAudited() throws Exception {
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        revert("nada que deshacer").andExpect(status().isUnprocessableEntity());
+        move(REVIEWER, "UNDER_REVIEW", null).andExpect(status().isOk());
+        move(REVIEWER, "DECISION_PENDING", null).andExpect(status().isOk());
+        assertThat(portfolioItem().get("revertTo").asText()).isEqualTo("UNDER_REVIEW");
+        // a reason is required; a site manager does not move tenders at all
+        revert(null).andExpect(status().isUnprocessableEntity());
+        session = signIn("obra", OBRA_TOKEN);
+        revert("no me toca").andExpect(status().isForbidden());
+        // the author takes it back; it is a new row, never a deletion
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        revert("clic por error").andExpect(status().isOk()).andExpect(jsonPath("$.stage").value("UNDER_REVIEW"))
+                .andExpect(jsonPath("$.revertTo").isEmpty());
+        // an undo cannot be undone
+        revert("otra vez").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0]").value("the last move was already undone"));
+        // another person's move: only management can take it back
+        session = signIn("gerencia", GERENCIA_TOKEN);
+        move(REVIEWER, "DECISION_PENDING", null).andExpect(status().isOk());
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        revert("no es mío").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0]")
+                        .value("only the person who made the move, or management, can undo it"));
+        session = signIn("gerencia", GERENCIA_TOKEN);
+        revert("error de gerencia").andExpect(status().isOk()).andExpect(jsonPath("$.stage").value("UNDER_REVIEW"));
+
+        JsonNode history = body(call("GET", "/api/tenders/" + tenderId + "/stages", ANALYST, null, null));
+        assertThat(history).hasSize(5);
+        assertThat(history.get(2).get("revert").asBoolean()).isTrue();
+        assertThat(history.get(2).get("note").asText()).isEqualTo("clic por error");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_entry WHERE action = 'TENDER_STAGE_REVERTED' "
+                + "AND entity_id = ?", Long.class, String.valueOf(tenderId))).isEqualTo(2);
+        // the reason stays out of the audit chain
+        assertThat(String.join("\n", jdbc.queryForList(
+                "SELECT details FROM audit_entry WHERE action = 'TENDER_STAGE_REVERTED'", String.class)))
+                .doesNotContain("clic por error").doesNotContain("error de gerencia");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
+
     @Test
     void certificationsAreCalculatedByTheCoreIssuedByPeopleAndNeverChanged() throws Exception {
         call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null)

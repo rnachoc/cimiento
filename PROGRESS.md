@@ -240,5 +240,12 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Sin exportación a PDF ni BC3 de la certificación, sin revisión de precios ni facturación.
 - Si cambia el presupuesto aprobado después de certificar, una partida puede quedar por debajo de lo certificado y el núcleo rechaza el mes.
 
+## Deshacer cambios de etapa y importes en una línea
+
+### Qué se hizo
+- Núcleo: `Pipeline.revertTarget` y `checkRevert` (reglas puras), V8 (`tender_stage_change.revert`), `POST /api/tenders/{id}/stage/revert {note}`. Se puede deshacer el último cambio en revisión, decisión pendiente y preparando oferta, por quien lo hizo o por gerencia, con motivo; presentada y los estados finales no. El deshacer es un cambio nuevo auditado (`TENDER_STAGE_REVERTED`), no se borra nada, y no se puede deshacer un deshacer. ADR 0015.
+- Consola: botón "Volver a …" en la cartera (con motivo) y marca "(deshecho)" en el historial. Los importes de Dirección y de la ficha van siempre en una línea con el símbolo del euro.
+- Tests: 4 de reglas, 1 de integración (permisos, motivo, auditoría y cadena) y 2 specs de la cartera.
+
 ## Siguiente paso
-Hechas la 15 y la 18. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
+Hechas la 15, la 18 y el deshacer. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.

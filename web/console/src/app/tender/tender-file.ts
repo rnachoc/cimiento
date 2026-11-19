@@ -120,7 +120,7 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
           <ol class="timeline" data-testid="history">
             <li><span class="dot"></span><b>{{ stageLabel('TO_REVIEW') }}</b><span class="muted">&nbsp;· {{ when(t.createdAt) }}</span></li>
             @for (h of history(); track h.id) {
-              <li><span class="dot"></span><b>{{ stageLabel(h.to) }}</b><span class="muted">&nbsp;· {{ when(h.at) }}@if (h.person) { · {{ h.person }} }</span>
+              <li><span class="dot"></span><b>{{ stageLabel(h.to) }}</b>@if (h.revert) { <span class="muted">(deshecho)</span> }<span class="muted">&nbsp;· {{ when(h.at) }}@if (h.person) { · {{ h.person }} }</span>
                 @if (h.note) { <q>{{ h.note }}</q> }</li>
             }
           </ol>
@@ -149,10 +149,10 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
     h1 { font-size: clamp(2rem, 4.5vw, 3.6rem); letter-spacing: -0.035em; line-height: 1.05; margin: 10px 0 16px; }
     h1 .muted { color: var(--muted); font-weight: 700; }
     .badges { display: flex; flex-wrap: wrap; gap: 8px; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-top: 24px; }
-    .kpi { padding: 16px 20px; display: flex; flex-direction: column; gap: 2px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 24px; }
+    .kpi { padding: 16px 20px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .k { color: var(--muted); font-size: .85rem; }
-    .v { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; }
+    .v { font-size: clamp(1.25rem, 2.6vw, 1.7rem); font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
     .s { color: var(--muted); font-size: .82rem; }
     .site { display: inline-flex; margin-top: 18px; text-decoration: none; }
     .grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; margin: 24px 0; }

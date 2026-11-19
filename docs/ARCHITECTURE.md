@@ -141,7 +141,7 @@ stateDiagram-v2
     IN_PREPARATION --> DISCARDED: reason
 ```
 
-`GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain.
+`GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain. The last move can be undone while the tender is under review, decision pending or in preparation, by whoever made it or by management, as a new audited move (`TENDER_STAGE_REVERTED`, ADR 0015); a submitted bid cannot be taken back.
 
 ## Site progress and management figures
 

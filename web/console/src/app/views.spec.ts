@@ -19,7 +19,7 @@ const ITEM: PortfolioItem = {
   tenderId: 7, code: 'E-001', title: 'Licitación E-001', projectCode: 'LICITACIONES', stage: 'UNDER_REVIEW',
   createdAt: '2026-11-18T10:00:00Z', stageChangedAt: null, bidDeadline: '2027-04-21', deadlineApproved: false,
   recommendation: 'BID', budgetTotal: 176597.12, pendingReviews: 3, proposals: 5, bidAnalysisApproved: false,
-  next: ['DECISION_PENDING', 'DISCARDED'],
+  next: ['DECISION_PENDING', 'DISCARDED'], revertTo: null, lastMovedBy: null,
 };
 
 const SITE: SiteView = {

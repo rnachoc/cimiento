@@ -68,12 +68,12 @@ export function daysLeft(date: string, today: Date = new Date()): number {
               @if (t.pendingReviews > 0) {
                 <a routerLink="/" class="pending">{{ t.pendingReviews }} por revisar →</a>
               }
-              @if (t.next.length) {
+              @if (t.next.length || t.revertTo) {
                 @if (editing() === t.tenderId) {
                   <form class="move" (submit)="$event.preventDefault(); confirm(t)">
-                    <label [for]="'note-' + t.tenderId">Motivo ({{ label(target()!) }})</label>
+                    <label [for]="'note-' + t.tenderId">{{ undoing() ? 'Motivo para volver a ' + label(target()!) : 'Motivo (' + label(target()!) + ')' }}</label>
                     <textarea [id]="'note-' + t.tenderId" name="note" rows="2" [(ngModel)]="note"
-                              placeholder="Por qué se toma esta decisión" required></textarea>
+                              placeholder="{{ undoing() ? 'Qué se hizo mal' : 'Por qué se toma esta decisión' }}" required></textarea>
                     <div class="row">
                       <button class="btn btn-approve" type="submit" [disabled]="busy()">Confirmar</button>
                       <button class="btn btn-ghost" type="button" (click)="cancel()">Cancelar</button>
@@ -86,6 +86,11 @@ export function daysLeft(date: string, today: Date = new Date()): number {
                               [class.btn-ghost]="s !== 'DISCARDED' && s !== 'LOST'" [disabled]="busy() || !!blocked(s)"
                               [attr.title]="blocked(s) || null"
                               [attr.data-testid]="'move-' + t.code + '-' + s" (click)="start(t, s)">{{ label(s) }}</button>
+                    }
+                    @if (t.revertTo) {
+                      <button class="btn small btn-ghost undo" type="button" [disabled]="busy() || !!undoBlocked(t)"
+                              [attr.title]="undoBlocked(t) || 'Deshace el último cambio de etapa'"
+                              [attr.data-testid]="'undo-' + t.code" (click)="startUndo(t)">↩ Volver a {{ label(t.revertTo) }}</button>
                     }
                   </div>
                 }
@@ -153,6 +158,7 @@ export class Portfolio {
   readonly target = signal<Stage | null>(null);
   readonly moveError = signal<string[] | null>(null);
   readonly lastTender = signal<number | null>(null);
+  readonly undoing = signal(false);
   note = '';
 
   readonly open = computed(() => this.items().filter((t) => OPEN.includes(t.stage)));
@@ -222,6 +228,24 @@ export class Portfolio {
     return '';
   }
 
+  /** Why this person cannot undo the last move ('' when allowed); the core decides anyway. */
+  undoBlocked(t: PortfolioItem): string {
+    const me = this.session.person();
+    if (!me) return 'Inicia sesión.';
+    if (me.role === 'SITE_MANAGER') return 'Jefatura de obra no mueve licitaciones.';
+    if (me.role !== 'MANAGEMENT' && me.username !== t.lastMovedBy) return 'Solo quien hizo el cambio, o gerencia, puede deshacerlo.';
+    if (t.revertTo && MANAGEMENT_STAGES.includes(t.revertTo) && me.role !== 'MANAGEMENT') return 'Lo decide gerencia.';
+    return '';
+  }
+
+  startUndo(t: PortfolioItem): void {
+    this.moveError.set(null);
+    this.undoing.set(true);
+    this.editing.set(t.tenderId);
+    this.target.set(t.revertTo);
+    this.note = '';
+  }
+
   start(t: PortfolioItem, s: Stage): void {
     this.moveError.set(null);
     if (NOTE_REQUIRED.includes(s)) {
@@ -241,11 +265,37 @@ export class Portfolio {
       this.moveError.set(['Escribe el motivo de la decisión.']);
       return;
     }
+    if (this.undoing()) {
+      this.sendUndo(t, this.note);
+      return;
+    }
     this.send(t, s, this.note);
+  }
+
+  private sendUndo(t: PortfolioItem, note: string): void {
+    this.busy.set(true);
+    this.lastTender.set(t.tenderId);
+    this.api.revertStage(t.tenderId, note).subscribe({
+      next: (updated) => {
+        this.items.update((rows) => rows.map((r) => (r.tenderId === updated.tenderId ? updated : r)));
+        this.busy.set(false);
+        this.cancel();
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  private fail(e: { status?: number; error?: { details?: unknown; message?: string } }): void {
+    this.busy.set(false);
+    const details = e?.error?.details;
+    this.moveError.set(Array.isArray(details) && details.length
+      ? details.map((d: string | { message: string }) => (typeof d === 'string' ? d : d.message))
+      : [e?.error?.message ?? `HTTP ${e?.status ?? '?'}`]);
   }
 
   cancel(): void {
     this.editing.set(null);
+    this.undoing.set(false);
     this.target.set(null);
     this.moveError.set(null);
   }
@@ -259,13 +309,7 @@ export class Portfolio {
         this.busy.set(false);
         this.cancel();
       },
-      error: (e) => {
-        this.busy.set(false);
-        const details = e?.error?.details;
-        this.moveError.set(Array.isArray(details) && details.length
-          ? details.map((d: string | { message: string }) => (typeof d === 'string' ? d : d.message))
-          : [e?.error?.message ?? `HTTP ${e?.status ?? '?'}`]);
-      },
+      error: (e) => this.fail(e),
     });
   }
 }

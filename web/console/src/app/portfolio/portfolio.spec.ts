@@ -16,7 +16,7 @@ function item(id: number, code: string, extra: Partial<PortfolioItem> = {}): Por
   return {
     tenderId: id, code, title: `Licitación ${code}`, projectCode: 'LICITACIONES', stage: 'TO_REVIEW',
     createdAt: '2026-11-18T10:00:00Z', budgetTotal: null, stageChangedAt: null, bidDeadline: null, deadlineApproved: false, recommendation: null, pendingReviews: 0,
-    proposals: 3, bidAnalysisApproved: false, next: ['UNDER_REVIEW', 'DISCARDED'], ...extra,
+    proposals: 3, bidAnalysisApproved: false, next: ['UNDER_REVIEW', 'DISCARDED'], revertTo: null, lastMovedBy: null, ...extra,
   };
 }
 
@@ -105,5 +105,31 @@ describe('Portfolio', () => {
       { status: 422, statusText: 'Unprocessable' });
     await fixture.whenStable();
     expect(el.querySelector('.problems')?.textContent).toContain('cannot move from TO_REVIEW to DISCARDED');
+  });
+
+  it('offers to take the last move back, asks for a reason and replaces the tender with the core answer', async () => {
+    const fixture = await render([item(1, 'E-001', { stage: 'DECISION_PENDING', next: ['IN_PREPARATION', 'DISCARDED'],
+      revertTo: 'UNDER_REVIEW', lastMovedBy: 'estudios' })]);
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('[data-testid="undo-E-001"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const area = el.querySelector('textarea') as HTMLTextAreaElement;
+    area.value = 'clic por error';
+    area.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    (el.querySelector('form button[type="submit"]') as HTMLButtonElement).click();
+    const req = http.expectOne('/api/tenders/1/stage/revert');
+    expect(req.request.body).toEqual({ note: 'clic por error' });
+    req.flush(item(1, 'E-001', { stage: 'UNDER_REVIEW', next: ['DECISION_PENDING', 'DISCARDED'], revertTo: null }));
+    await fixture.whenStable();
+    expect(el.querySelector('[data-testid="col-UNDER_REVIEW"] [data-testid="tender-E-001"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="undo-E-001"]')).toBeNull();
+  });
+
+  it('disables the undo for someone who did not make the move and is not management', async () => {
+    TestBed.inject(Session).person.set({ username: 'estudios', displayName: 'Luis', role: 'ESTIMATING', scope: [] });
+    const fixture = await render([item(1, 'E-001', { stage: 'DECISION_PENDING', revertTo: 'UNDER_REVIEW', lastMovedBy: 'gerencia' })]);
+    const btn = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="undo-E-001"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
   });
 });

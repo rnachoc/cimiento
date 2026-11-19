@@ -215,6 +215,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 14 | Tender file, site progress view and management view | done |
 | 15 | People, roles and segregation of duties | done |
 | 18 | Monthly certifications of site work | done |
+| 20 | Undo of the last stage move | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 

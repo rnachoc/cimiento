@@ -29,6 +29,7 @@ import dev.cimiento.core.web.ApiDtos.ProjectView;
 import dev.cimiento.core.web.ApiDtos.ProposalView;
 import dev.cimiento.core.web.ApiDtos.RateView;
 import dev.cimiento.core.web.ApiDtos.ScheduleView;
+import dev.cimiento.core.web.ApiDtos.RevertRequest;
 import dev.cimiento.core.web.ApiDtos.StageChangeView;
 import dev.cimiento.core.web.ApiDtos.StageRequest;
 import dev.cimiento.core.web.ApiDtos.SubmitProposal;
@@ -158,10 +159,16 @@ public class ApiController {
         return ResponseEntity.status(HttpStatus.CREATED).body(certifications.issue(actor, id, body.month()));
     }
 
+    @PostMapping("/tenders/{id}/stage/revert")
+    public PortfolioService.Item revertStage(@RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor,
+                                             @PathVariable Long id, @Valid @RequestBody RevertRequest body) {
+        return portfolio.revert(actor, id, body.note());
+    }
+
     @GetMapping("/tenders/{id}/stages")
     public List<StageChangeView> stageHistory(@PathVariable Long id) {
         return portfolio.history(id).stream().map(c -> new StageChangeView(c.getId(), c.getFromStage(),
-                c.getToStage(), c.getNote(), c.getActorRole(), c.getPerson(), c.getCreatedAt())).toList();
+                c.getToStage(), c.getNote(), c.getActorRole(), c.getPerson(), c.getCreatedAt(), c.isRevert())).toList();
     }
 
     @GetMapping("/proposals/{id}/export")
