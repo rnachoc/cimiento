@@ -62,6 +62,7 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
         </div>
         @if (hasSite()) {
           <a class="btn btn-ghost site" [routerLink]="['/obra', t.tenderId]" data-testid="to-site">Ver seguimiento de obra →</a>
+          <a class="btn btn-ghost site" [routerLink]="['/certificaciones', t.tenderId]" data-testid="to-certifications">Certificaciones →</a>
         }
       </header>
 

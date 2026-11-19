@@ -39,6 +39,7 @@ export function linePoints(curve: CurvePoint[], key: 'plannedPct' | 'actualPct',
           <div class="kpi glass"><span class="k">Actividades en alarma</span><span class="v" [class.late]="alarms() > 0" data-testid="alarms">{{ alarms() }}</span>
             <span class="s">retraso mayor que su holgura</span></div>
         </div>
+        <a class="btn btn-ghost" [routerLink]="['/certificaciones', s.tenderId]" data-testid="to-certifications">Certificaciones →</a>
         @if (s.contractDeadline) {
           <p class="muted small">Plazo contractual hasta {{ s.contractDeadline }}{{ s.forecastEnd > s.contractDeadline ? ': el fin previsto lo supera.' : '.' }}</p>
         }

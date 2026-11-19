@@ -119,3 +119,60 @@ test('the browser cannot act as another role: nginx overwrites any key it sends'
   });
   expect(status).toBe(403); // reaches the core as REVIEWER, which may not propose
 });
+
+test('a site manager issues the monthly certification the core calculated', async ({ page }) => {
+  const reviewer = await request.newContext({ baseURL: CORE, extraHTTPHeaders: { 'X-Api-Key': key('CIMIENTO_REVIEWER_KEY') } });
+  const agent = await request.newContext({ baseURL: CORE, extraHTTPHeaders: { 'X-Api-Key': key('CIMIENTO_AGENT_KEY') } });
+  const analyst = await request.newContext({ baseURL: CORE, extraHTTPHeaders: { 'X-Api-Key': key('CIMIENTO_ANALYST_KEY') } });
+
+  await reviewer.post('/api/projects', { data: { code: 'E2E', name: 'End to end' } });
+  const code = `CERT-${Date.now()}`;
+  const tender = await (await agent.post('/api/tenders', {
+    data: { projectCode: 'E2E', code, title: 'Certificación de prueba', contractTermMonths: 6, plannedStart: '2027-01-04' },
+  })).json();
+  const rates: { code: string; activity: string; unitPrice: string }[] = await (await analyst.get('/api/rates')).json();
+  const rate = rates.find((r) => r.activity === 'A01')!;
+  const total = (Number(rate.unitPrice) * 10).toFixed(2);
+  const budget = await (await agent.post('/api/proposals', {
+    headers: { 'Idempotency-Key': `${code}-b` },
+    data: {
+      tenderId: tender.id, type: 'BUDGET', citations: [{ document: 'mediciones', page: 1, text: 'x' }],
+      payload: { lines: [{ code: rate.code, quantity: 10 }], claimedTotal: total },
+    },
+  })).json();
+  // week 4 closes on 29 January: A01 is at 60 %, on plan, so the progress needs no review
+  const progress = await agent.post('/api/proposals', {
+    headers: { 'Idempotency-Key': `${code}-p` },
+    data: {
+      tenderId: tender.id, type: 'PROGRESS_UPDATE', citations: [{ document: 'obra/avance_semanal.csv', page: 1, text: 'x' }],
+      payload: { week: 4, rows: [{ activity: 'A01', plannedPct: 60, actualPct: 60 }],
+                 history: [{ week: 1, rows: [{ activity: 'A01', plannedPct: 20, actualPct: 20 }] }] },
+    },
+  });
+  expect((await progress.json()).status).toBe('EXECUTED');
+  // management approves the budget through the API with a session, like the console would
+  expect((await reviewer.post('/api/session', { data: { username: 'gerencia', token: key('GERENCIA_TOKEN') } })).ok()).toBe(true);
+  expect((await reviewer.post(`/api/proposals/${budget.id}/decision`, { data: { outcome: 'APPROVE' } })).ok()).toBe(true);
+
+  // estimating sees the valuation but cannot issue it
+  await signIn(page, 'estudios', key('ESTUDIOS_TOKEN'));
+  await page.goto(`/certificaciones/${tender.id}`);
+  await expect(page.getByTestId('period')).toBeVisible();
+  await expect(page.getByTestId('issue')).toBeDisabled();
+  await expect(page.getByTestId('why-not')).toContainText('Estudios');
+  await page.getByRole('button', { name: 'Salir' }).click();
+
+  // the site manager issues it; the amount comes from the core, not from the page
+  await signIn(page, 'obra', key('OBRA_TOKEN'));
+  await page.goto(`/certificaciones/${tender.id}`);
+  await expect(page.getByTestId('issue')).toBeEnabled();
+  await page.getByTestId('issue').click();
+  await expect(page.getByTestId('issued').locator('tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('issued')).toContainText('2027-01');
+  await expect(page.getByTestId('issued')).toContainText('obra');
+  const issued = await (await analyst.get(`/api/tenders/${tender.id}/certifications`)).json();
+  expect(issued).toHaveLength(1);
+  expect(issued[0].toDate).toBeCloseTo(Number(total) * 0.6, 2);
+  // issuing the same month again is refused by the core and the button says why
+  await expect(page.getByTestId('issue')).toBeDisabled();
+});

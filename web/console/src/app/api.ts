@@ -52,6 +52,22 @@ export interface SiteView {
   analysis: { statusWeek: number; curve: CurvePoint[]; deviations: Deviation[]; plannedDuration: number;
     forecastDuration: number; impactDays: number; impactIsLowerBound: boolean; };
 }
+export interface CertLine {
+  code: string; activity: string; description: string; amount: number; pct: number;
+  toDate: number; previous: number; period: number;
+}
+export interface CertResult {
+  month: string; expectedMonth: string; cutWeek: number | null; cutDate: string | null; lines: CertLine[];
+  budgetTotal: number; toDate: number; previous: number; period: number; retention: number; net: number;
+  vat: number; payable: number; errors: string[];
+}
+export interface CertPreview {
+  tenderId: number; tenderCode: string; budgetApproved: boolean; progressApproved: boolean; result: CertResult;
+}
+export interface CertIssued {
+  id: number; number: number; month: string; cutWeek: number; budget: number; toDate: number; previous: number;
+  period: number; retention: number; net: number; vat: number; payable: number; issuedBy: string; issuedAt: string;
+}
 export interface Dashboard {
   tendersByStage: Record<Stage, number>; open: number; winRatePct: number | null; openBudget: number;
   awardedBudget: number; meanMinutesInStage: Partial<Record<Stage, number>>; pendingByType: Record<string, number>;
@@ -97,6 +113,18 @@ export class Api {
 
   site(tenderId: number): Observable<SiteView> {
     return this.http.get<SiteView>(`/api/tenders/${tenderId}/site`);
+  }
+
+  certification(tenderId: number, month?: string): Observable<CertPreview> {
+    return this.http.get<CertPreview>(`/api/tenders/${tenderId}/certification`, { params: month ? { month } : {} });
+  }
+
+  certifications(tenderId: number): Observable<CertIssued[]> {
+    return this.http.get<CertIssued[]>(`/api/tenders/${tenderId}/certifications`);
+  }
+
+  issueCertification(tenderId: number, month: string): Observable<CertIssued> {
+    return this.http.post<CertIssued>(`/api/tenders/${tenderId}/certifications`, { month });
   }
 
   dashboard(): Observable<Dashboard> {
