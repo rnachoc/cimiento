@@ -62,4 +62,11 @@ class AuthorityTest {
             assertThat(Authority.checkStage(PersonRole.MANAGEMENT, s)).isEmpty();
         }
     }
+
+    @Test
+    void estimatingDoesNotIssueCertifications() {
+        assertThat(rules(Authority.checkCertification(PersonRole.ESTIMATING))).containsExactly(Authority.ROLE_SCOPE);
+        assertThat(Authority.checkCertification(PersonRole.SITE_MANAGER)).isEmpty();
+        assertThat(Authority.checkCertification(PersonRole.MANAGEMENT)).isEmpty();
+    }
 }

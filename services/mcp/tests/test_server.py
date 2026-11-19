@@ -44,6 +44,23 @@ ROUTES = {
     "/api/proposals/7": PROPOSAL,
     "/api/audit": [{"seq": 1, "action": "PROPOSAL_SUBMITTED", "details": {"type": "BUDGET"}}],
     "/api/audit/verify": {"valid": True, "entries": 1},
+    "/api/tenders/1/certifications": [
+        {
+            "number": 1,
+            "month": "2027-05",
+            "cutWeek": 3,
+            "toDate": 1100.0,
+            "previous": 0.0,
+            "period": 1100.0,
+            "retention": 55.0,
+            "net": 1045.0,
+            "vat": 219.45,
+            "payable": 1264.45,
+            "issuedBy": "obra",
+            "issuedAt": "2027-06-01T08:00:00Z",
+            "lines": [{"code": "MT01", "amount": 1000.0, "toDate": 600.0}],
+        }
+    ],
     "/api/portfolio": [
         {"tenderId": 1, "code": "E-003", "stage": "UNDER_REVIEW", "bidDeadline": "2027-02-15"}
     ],
@@ -105,6 +122,7 @@ def test_every_tool_is_read_only_and_reads_through_the_analyst_key():
         "verify_audit",
         "search_documents",
         "get_portfolio",
+        "get_certifications",
     }
     assert all(t.annotations.read_only_hint and not t.annotations.destructive_hint for t in tools)
     wire = tools[0].annotations.model_dump(by_alias=True, exclude_none=True)
@@ -120,6 +138,9 @@ def test_every_tool_is_read_only_and_reads_through_the_analyst_key():
     assert call(server, "read_audit", {"after_seq": 0})[0]["action"] == "PROPOSAL_SUBMITTED"
     assert call(server, "verify_audit")["valid"] is True
     assert call(server, "get_portfolio")[0]["stage"] == "UNDER_REVIEW"
+    cert = call(server, "get_certifications", {"tender_id": 1})[0]
+    assert cert["period"] == 1100.0 and cert["issuedBy"] == "obra"
+    assert "lines" not in cert  # never the lines of the budget
     assert {r.method for r in seen} == {"GET"}
     assert all(r.headers["X-Api-Key"] == KEY for r in seen)
     assert any(r.url.params.get("status") == "PENDING_REVIEW" for r in seen)

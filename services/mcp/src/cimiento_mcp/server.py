@@ -114,6 +114,27 @@ def build_server(core: ReadOnlyCore, search: SearchClient | None = None) -> MCPS
         return mask(core.get("/api/portfolio"))
 
     @server.tool(annotations=READ_ONLY)
+    def get_certifications(tender_id: int) -> list[dict]:
+        """Monthly certifications already issued for a tender: month, cut week, to date, period,
+        retention and payable. Totals only, never the lines of the budget."""
+        rows = core.get(f"/api/tenders/{tender_id}/certifications")
+        keys = (
+            "number",
+            "month",
+            "cutWeek",
+            "toDate",
+            "previous",
+            "period",
+            "retention",
+            "net",
+            "vat",
+            "payable",
+            "issuedBy",
+            "issuedAt",
+        )
+        return [mask({k: r[k] for k in keys}) for r in rows]
+
+    @server.tool(annotations=READ_ONLY)
     def get_proposal(proposal_id: int) -> dict:
         """One proposal with its payload, citations, rule results and routing reasons."""
         return mask(core.get(f"/api/proposals/{proposal_id}"))

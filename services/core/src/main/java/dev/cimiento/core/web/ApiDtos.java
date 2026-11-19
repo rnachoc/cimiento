@@ -54,6 +54,9 @@ public final class ApiDtos {
     public record DecisionView(Decision.Outcome outcome, String person, Instant at) {
     }
 
+    public record CertificationRequest(@NotNull @jakarta.validation.constraints.Pattern(regexp = "\\d{4}-(0[1-9]|1[0-2])") String month) {
+    }
+
     public record SessionRequest(@NotNull @jakarta.validation.constraints.Size(max = 40) String username,
                                  @NotNull @jakarta.validation.constraints.Size(max = 200) String token) {
     }

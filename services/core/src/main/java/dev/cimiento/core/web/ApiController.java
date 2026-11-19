@@ -18,6 +18,7 @@ import dev.cimiento.core.service.ProjectService;
 import dev.cimiento.core.service.ProposalService;
 import dev.cimiento.core.service.QueryService;
 import dev.cimiento.core.security.Actor;
+import dev.cimiento.core.service.CertificationService;
 import dev.cimiento.core.web.ApiDtos.AuditView;
 import dev.cimiento.core.web.ApiDtos.DecisionView;
 import dev.cimiento.core.web.ApiDtos.CreateProject;
@@ -63,10 +64,13 @@ public class ApiController {
     private final ExportService exports;
     private final SiteService site;
     private final DashboardService dashboard;
+    private final CertificationService certifications;
 
     public ApiController(ProjectService projects, ProposalService proposals, QueryService queries,
                          AuditService audit, CanonicalJson json, PortfolioService portfolio, ExportService exports,
-                         SiteService site, DashboardService dashboard) {
+                         SiteService site, DashboardService dashboard,
+                         CertificationService certifications) {
+        this.certifications = certifications;
         this.site = site;
         this.dashboard = dashboard;
         this.portfolio = portfolio;
@@ -134,6 +138,24 @@ public class ApiController {
     public PortfolioService.Item moveStage(@RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor,
                                            @PathVariable Long id, @Valid @RequestBody StageRequest body) {
         return portfolio.move(actor, id, body.stage(), body.note());
+    }
+
+    @GetMapping("/tenders/{id}/certification")
+    public CertificationService.Preview certificationPreview(@PathVariable Long id,
+                                                             @RequestParam(required = false) String month) {
+        return certifications.preview(id, month);
+    }
+
+    @GetMapping("/tenders/{id}/certifications")
+    public List<CertificationService.IssuedView> certificationList(@PathVariable Long id) {
+        return certifications.list(id);
+    }
+
+    @PostMapping("/tenders/{id}/certifications")
+    public ResponseEntity<CertificationService.IssuedView> issueCertification(
+            @RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor, @PathVariable Long id,
+            @Valid @RequestBody ApiDtos.CertificationRequest body) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(certifications.issue(actor, id, body.month()));
     }
 
     @GetMapping("/tenders/{id}/stages")

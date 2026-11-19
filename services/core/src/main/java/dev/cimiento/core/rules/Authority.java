@@ -59,6 +59,12 @@ public final class Authority {
         return broken;
     }
 
+    /** Issuing a certification is a site or management act; estimating does not issue them. */
+    public static List<Broken> checkCertification(PersonRole role) {
+        return role == PersonRole.ESTIMATING
+                ? List.of(new Broken(ROLE_SCOPE, "ESTIMATING does not issue certifications")) : List.of();
+    }
+
     public static List<Broken> checkStage(PersonRole role, TenderStage to) {
         if (MANAGEMENT_STAGES.contains(to) && role != PersonRole.MANAGEMENT) {
             return List.of(new Broken(STAGE_RESERVED, "moving a tender to " + to + " is decided by management"));

@@ -534,4 +534,84 @@ class ApiIntegrationTest {
         assertThat(history.get(0).get("person").asText()).isEqualTo("estudios");
         assertThat(history.get(1).get("person").asText()).isEqualTo("gerencia");
     }
+
+    @Test
+    void certificationsAreCalculatedByTheCoreIssuedByPeopleAndNeverChanged() throws Exception {
+        call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null)
+                .andExpect(status().isNotFound());
+        String code = jdbc.queryForObject("SELECT code FROM rate WHERE activity = 'A01' ORDER BY code LIMIT 1",
+                String.class);
+        java.math.BigDecimal amount = jdbc.queryForObject("SELECT unit_price * 10 FROM rate WHERE code = ?",
+                java.math.BigDecimal.class, code).setScale(2, java.math.RoundingMode.HALF_UP);
+        String budget = "{'tenderId':" + tenderId + ",'type':'BUDGET','citations':[{'document':'mediciones',"
+                + "'page':1,'text':'x'}],'payload':{'lines':[{'code':'" + code + "','quantity':10}],'claimedTotal':'"
+                + amount.toPlainString() + "'}}";
+        long b = body(call("POST", "/api/proposals", AGENT, budget, UUID.randomUUID().toString())).get("id").asLong();
+        // week 4 closes on 29 January 2027: A01 is at 60 %, on plan, so the progress runs without review
+        String progress = "{'tenderId':" + tenderId + ",'type':'PROGRESS_UPDATE','citations':[{'document':"
+                + "'obra/avance_semanal.csv','page':1,'text':'4;2027-01-29;A01'}],'payload':{'week':4,'rows':["
+                + "{'activity':'A01','plannedPct':60,'actualPct':60}],'history':[{'week':1,'rows':["
+                + "{'activity':'A01','plannedPct':20,'actualPct':20}]}]}}";
+        call("POST", "/api/proposals", AGENT, progress, UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
+
+        // the preview is a read: it works, writes nothing and says what is missing
+        long before = jdbc.queryForObject("SELECT count(*) FROM audit_entry", Long.class);
+        var pending = body(call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null)
+                .andExpect(status().isOk()));
+        assertThat(pending.get("budgetApproved").asBoolean()).isFalse();
+        assertThat(pending.get("result").get("errors").toString()).contains("the budget is not approved yet");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_entry", Long.class)).isEqualTo(before);
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-01'}", null)
+                .andExpect(status().isUnprocessableEntity());
+
+        call("POST", "/api/proposals/" + b + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isOk());
+        var ready = body(call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null));
+        JsonNode r = ready.get("result");
+        assertThat(r.get("errors")).isEmpty();
+        assertThat(r.get("month").asText()).isEqualTo("2027-01");
+        assertThat(r.get("cutWeek").asInt()).isEqualTo(4);
+        java.math.BigDecimal toDate = amount.multiply(new java.math.BigDecimal("0.60"))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        assertThat(r.get("toDate").decimalValue()).isEqualByComparingTo(toDate);
+
+        // only a person with authority issues it, and the client never sends an amount
+        Cookie nobody = session;
+        session = null;
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-01'}", null)
+                .andExpect(status().isUnauthorized());
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-01'}", null)
+                .andExpect(status().isForbidden());
+        call("POST", "/api/tenders/" + tenderId + "/certifications", AGENT, "{'month':'2027-01'}", null)
+                .andExpect(status().isForbidden());
+        session = signIn("obra", OBRA_TOKEN);
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'enero'}", null)
+                .andExpect(status().isBadRequest());
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-01'}", null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.number").value(1))
+                .andExpect(jsonPath("$.issuedBy").value("obra"))
+                .andExpect(jsonPath("$.toDate").value(toDate.doubleValue()));
+
+        // not twice, not out of order, not a month without progress
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-01'}", null)
+                .andExpect(status().isUnprocessableEntity());
+        call("POST", "/api/tenders/" + tenderId + "/certifications", REVIEWER, "{'month':'2027-02'}", null)
+                .andExpect(status().isUnprocessableEntity());
+        call("GET", "/api/tenders/" + tenderId + "/certifications", ANALYST, null, null)
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].lines[0].code").value(code));
+
+        // audited with the person, and the chain stays valid
+        assertThat(jdbc.queryForObject("SELECT actor_person FROM audit_entry WHERE action = 'CERTIFICATION_ISSUED'",
+                String.class)).isEqualTo("obra");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+        // a certification is frozen: the database refuses to change or remove it
+        assertThatThrownBy(() -> jdbc.update("UPDATE certification SET payable = 0"))
+                .hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM certification")).hasMessageContaining("immutable");
+        session = nobody;
+    }
 }
