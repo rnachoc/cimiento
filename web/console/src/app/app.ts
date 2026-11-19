@@ -44,7 +44,7 @@ import { Session } from './session';
     .nav a { padding: 6px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .92rem; transition: color .2s, background .2s; }
     .nav a:hover { color: var(--text); }
     .nav a.on { color: var(--text); background: var(--surface-2); }
-    @media (max-width: 520px) { .topbar { gap: 8px; padding: 10px 14px; } .nav a { padding: 6px 10px; } .who { display: none; } .out { margin-left: auto; } .brand-name { display: none; } }
+    @media (max-width: 520px) { .topbar { gap: 6px; padding: 10px 12px; } .nav { gap: 0; } .nav a { padding: 6px 8px; font-size: .86rem; } .who { display: none; } .out { margin-left: auto; padding: 6px 10px; } .brand-name { display: none; } }
     .out { font: inherit; font-size: .85rem; padding: 6px 12px; border-radius: 999px; background: none; color: var(--muted); border: 1px solid var(--border); cursor: pointer; }
     .out:hover { color: var(--text); }
     .role { color: var(--muted); }
