@@ -106,10 +106,10 @@ function bars(entries: [string, number][], text: (v: number) => string = String)
     .hero { padding: 88px 8px 20px; }
     h1 { font-size: clamp(2.2rem, 5.5vw, 4.4rem); line-height: 1.02; letter-spacing: -0.04em; margin: 12px 0 18px; }
     .lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 24px 0; }
-    .kpi { padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 24px 0; }
+    .kpi { padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .k { color: var(--muted); font-size: .85rem; }
-    .v { font-size: clamp(1.4rem, 3.2vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+    .v { font-size: clamp(1.2rem, 2.6vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; }
     .v.ok { color: var(--ok); } .v.alert, .alert { color: var(--accent-3); }
     .s { color: var(--muted); font-size: .8rem; }
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 24px; }
