@@ -34,9 +34,12 @@ public class QueryService {
     private final AuditRepository audit;
     private final RateRepository rates;
 
+    private final CalendarService calendars;
+
     public QueryService(TenderRepository tenders, ScheduleRepository schedules, ScheduleActivityRepository activities,
                         ScheduleLinkRepository links, ProgressRepository progress, AuditRepository audit,
-                        RateRepository rates) {
+                        RateRepository rates, CalendarService calendars) {
+        this.calendars = calendars;
         this.tenders = tenders;
         this.schedules = schedules;
         this.activities = activities;
@@ -54,8 +57,13 @@ public class QueryService {
         List<String> critical = acts.stream().filter(ScheduleActivity::isCritical)
                 .sorted(Comparator.comparingInt(ScheduleActivity::getEs).thenComparing(ScheduleActivity::getCode))
                 .map(ScheduleActivity::getCode).toList();
+        // the end follows the work calendar as it is now, so a later calendar change shows at once
+        var cal = calendars.of(tenders.findById(tenderId).orElseThrow());
+        java.time.LocalDate end = cal.workdayOf(s.getStartDate(), Math.max(s.getDurationDays() - 1, 0));
+        Boolean exceeds = s.getContractDeadline() == null ? s.getExceedsTerm()
+                : Boolean.valueOf(end.isAfter(s.getContractDeadline()));
         return new ScheduleView(s.getId(), s.getTenderId(), s.getProposalId(), s.getDurationDays(), s.getStartDate(),
-                s.getEndDate(), s.getContractDeadline(), s.getExceedsTerm(), critical,
+                end, s.getContractDeadline(), exceeds, critical,
                 acts.stream().map(a -> new ActivityView(a.getCode(), a.getName(), a.getDuration(), a.getEs(),
                         a.getEf(), a.getLs(), a.getLf(), a.getTotalFloat(), a.isCritical())).toList(),
                 links.findByScheduleIdOrderByFromCodeAscToCodeAsc(s.getId()).stream()

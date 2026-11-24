@@ -34,7 +34,10 @@ public class SiteService {
     private final PortfolioService portfolio;
     private final CanonicalJson json;
 
-    public SiteService(TenderRepository tenders, PortfolioService portfolio, CanonicalJson json) {
+    private final CalendarService calendars;
+
+    public SiteService(TenderRepository tenders, PortfolioService portfolio, CanonicalJson json, CalendarService calendars) {
+        this.calendars = calendars;
         this.tenders = tenders;
         this.portfolio = portfolio;
         this.json = json;
@@ -60,8 +63,8 @@ public class SiteService {
             LocalDate start = t.getPlannedStart();
             return new SiteView(t.getId(), t.getCode(), r.statusWeek(), WorkCalendar.workday(start, 5 * r.statusWeek() - 1),
                     prog.getStatus() == ProposalStatus.EXECUTED, sched.getStatus() == ProposalStatus.EXECUTED,
-                    WorkCalendar.workday(start, r.plannedDuration() - 1),
-                    WorkCalendar.workday(start, r.forecastDuration() - 1),
+                    calendars.of(t).workdayOf(start, r.plannedDuration() - 1),
+                    calendars.of(t).workdayOf(start, r.forecastDuration() - 1),
                     t.getContractTermMonths() == null ? null : WorkCalendar.deadline(start, t.getContractTermMonths()),
                     r);
         } catch (JsonProcessingException | IllegalArgumentException e) {

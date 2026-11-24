@@ -2,6 +2,7 @@ package dev.cimiento.core.domain;
 
 import jakarta.persistence.Column;
 import dev.cimiento.core.rules.TenderStage;
+import dev.cimiento.core.rules.WorkCalendar;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -46,6 +47,14 @@ public class Tender {
 
     @Column(name = "stage_changed_at")
     private Instant stageChangedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkCalendar.Kind calendar = WorkCalendar.Kind.NONE;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "local_holidays", nullable = false)
+    private String localHolidays = "[]";
 
     protected Tender() {
     }
@@ -93,6 +102,20 @@ public class Tender {
 
     public Instant getStageChangedAt() {
         return stageChangedAt;
+    }
+
+    public WorkCalendar.Kind getCalendar() {
+        return calendar;
+    }
+
+    public String getLocalHolidays() {
+        return localHolidays;
+    }
+
+    /** Only called by the calendar service, after a person with authority asked for it. */
+    public void useCalendar(WorkCalendar.Kind kind, String localHolidaysJson) {
+        this.calendar = kind;
+        this.localHolidays = localHolidaysJson;
     }
 
     /** Only called after {@code Pipeline.check} allowed the move. */

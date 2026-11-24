@@ -32,7 +32,10 @@ public class ExportService {
     private final RateRepository rates;
     private final CanonicalJson json;
 
-    public ExportService(ProposalRepository proposals, RateRepository rates, CanonicalJson json) {
+    private final CalendarService calendars;
+
+    public ExportService(ProposalRepository proposals, RateRepository rates, CanonicalJson json, CalendarService calendars) {
+        this.calendars = calendars;
         this.proposals = proposals;
         this.rates = rates;
         this.json = json;
@@ -52,7 +55,8 @@ public class ExportService {
         try {
             if (p.getType() == ProposalType.SCHEDULE) {
                 var schedule = json.mapper().treeToValue(content, Payloads.Schedule.class);
-                String xml = Exports.mspdi("Planning " + tender, p.getTender().getPlannedStart(), schedule);
+                String xml = Exports.mspdi("Planning " + tender, p.getTender().getPlannedStart(), schedule,
+                        calendars.of(p.getTender()));
                 return new ExportFile("planning-" + suffix + ".xml", "application/xml",
                         xml.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }

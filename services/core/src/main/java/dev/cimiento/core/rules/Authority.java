@@ -65,6 +65,12 @@ public final class Authority {
                 ? List.of(new Broken(ROLE_SCOPE, "ESTIMATING does not issue certifications")) : List.of();
     }
 
+    /** The work calendar shapes the schedule: site managers and management set it, estimating does not. */
+    public static List<Broken> checkCalendar(PersonRole role) {
+        return role == PersonRole.ESTIMATING
+                ? List.of(new Broken(ROLE_SCOPE, "ESTIMATING does not change the work calendar")) : List.of();
+    }
+
     public static List<Broken> checkStage(PersonRole role, TenderStage to) {
         if (MANAGEMENT_STAGES.contains(to) && role != PersonRole.MANAGEMENT) {
             return List.of(new Broken(STAGE_RESERVED, "moving a tender to " + to + " is decided by management"));

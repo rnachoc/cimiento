@@ -67,10 +67,14 @@ public class ApiController {
     private final DashboardService dashboard;
     private final CertificationService certifications;
 
+    private final dev.cimiento.core.service.CalendarService calendars;
+
     public ApiController(ProjectService projects, ProposalService proposals, QueryService queries,
                          AuditService audit, CanonicalJson json, PortfolioService portfolio, ExportService exports,
                          SiteService site, DashboardService dashboard,
-                         CertificationService certifications) {
+                         CertificationService certifications,
+                         dev.cimiento.core.service.CalendarService calendars) {
+        this.calendars = calendars;
         this.certifications = certifications;
         this.site = site;
         this.dashboard = dashboard;
@@ -173,6 +177,21 @@ public class ApiController {
     public PortfolioService.Item revertStage(@RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor,
                                              @PathVariable Long id, @Valid @RequestBody RevertRequest body) {
         return portfolio.revert(actor, id, body.note());
+    }
+
+    @GetMapping("/tenders/{id}/calendar")
+    public dev.cimiento.core.service.CalendarService.View calendar(@PathVariable Long id) {
+        return calendars.view(id);
+    }
+
+    @PostMapping("/tenders/{id}/calendar")
+    public dev.cimiento.core.service.CalendarService.View setCalendar(
+            @RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor, @PathVariable Long id,
+            @Valid @RequestBody ApiDtos.CalendarRequest body) {
+        var local = body.localHolidays() == null ? List.<dev.cimiento.core.rules.Holidays.Holiday>of()
+                : body.localHolidays().stream()
+                        .map(h -> new dev.cimiento.core.rules.Holidays.Holiday(h.date(), h.name())).toList();
+        return calendars.update(actor, id, body.calendar(), local);
     }
 
     @GetMapping("/tenders/{id}/stages")

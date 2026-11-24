@@ -6,6 +6,7 @@ import dev.cimiento.core.rules.Payloads.Citation;
 import dev.cimiento.core.rules.ProposalType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,6 +34,14 @@ public final class ApiDtos {
 
     public record StageRequest(@NotNull dev.cimiento.core.rules.TenderStage stage,
                                @jakarta.validation.constraints.Size(max = 500) String note) {
+    }
+
+    public record HolidayInput(@NotNull java.time.LocalDate date,
+                               @jakarta.validation.constraints.Size(max = 80) String name) {
+    }
+
+    public record CalendarRequest(@NotNull dev.cimiento.core.rules.WorkCalendar.Kind calendar,
+                                  @jakarta.validation.constraints.Size(max = 30) List<@Valid HolidayInput> localHolidays) {
     }
 
     public record RevertRequest(@jakarta.validation.constraints.Size(max = 500) String note) {

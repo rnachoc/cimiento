@@ -62,11 +62,14 @@ public class ProposalService {
     private final CanonicalJson json;
     private final ObjectMapper mapper;
 
+    private final CalendarService calendars;
+
     public ProposalService(ProposalRepository proposals, TenderRepository tenders, IdempotencyRepository idempotency,
                            DecisionRepository decisions, ScheduleRepository schedules,
                            ScheduleActivityRepository activities, ScheduleLinkRepository links,
                            ProgressRepository progress, RuleEngineProvider engines, AuditService audit,
-                           CanonicalJson json, ObjectMapper mapper) {
+                           CanonicalJson json, ObjectMapper mapper, CalendarService calendars) {
+        this.calendars = calendars;
         this.proposals = proposals;
         this.tenders = tenders;
         this.idempotency = idempotency;
@@ -219,7 +222,8 @@ public class ProposalService {
                                 List<String> signals) {
         RuleEngine engine = engines.engine();
         return engine.evaluate(type, payload, citations, signals,
-                new RuleEngine.TenderContext(tender.getPlannedStart(), tender.getContractTermMonths()));
+                new RuleEngine.TenderContext(tender.getPlannedStart(), tender.getContractTermMonths(),
+                        calendars.of(tender)));
     }
 
     private void execute(Proposal p, JsonNode payload, Evaluation eval, Actor actor) {
@@ -233,7 +237,7 @@ public class ProposalService {
                     Cpm.Result cpm = eval.schedule();
                     ScheduleEntity entity = schedules.save(new ScheduleEntity(tender.getId(), p.getId(),
                             cpm.duration(), tender.getPlannedStart(),
-                            WorkCalendar.workday(tender.getPlannedStart(), cpm.duration() - 1),
+                            calendars.of(tender).workdayOf(tender.getPlannedStart(), cpm.duration() - 1),
                             tender.getContractTermMonths() == null ? null
                                     : WorkCalendar.deadline(tender.getPlannedStart(), tender.getContractTermMonths())));
                     Map<String, String> names = s.activities().stream().collect(Collectors.toMap(

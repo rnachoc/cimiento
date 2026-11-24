@@ -40,6 +40,14 @@ public final class Exports {
      * Monday to Friday calendar, finish-to-start links with their lag, critical flag and total float.
      */
     public static String mspdi(String title, LocalDate start, Payloads.Schedule schedule) {
+        return mspdi(title, start, schedule, WorkCalendar.STANDARD);
+    }
+
+    /**
+     * Same, on a work calendar with holidays: dates skip them, and the project calendar lists them as
+     * non-working exceptions so a planning tool keeps the same days.
+     */
+    public static String mspdi(String title, LocalDate start, Payloads.Schedule schedule, WorkCalendar calendar) {
         Cpm.Result cpm = Cpm.solve(schedule.activities(), schedule.links());
         Map<String, Integer> uid = new HashMap<>();
         for (int i = 0; i < schedule.activities().size(); i++) {
@@ -51,10 +59,37 @@ public final class Exports {
             doc.appendChild(project);
             text(doc, project, "Name", title);
             text(doc, project, "StartDate", start + "T08:00:00");
-            text(doc, project, "FinishDate", WorkCalendar.workday(start, Math.max(cpm.duration() - 1, 0)) + "T17:00:00");
+            LocalDate finish = calendar.workdayOf(start, Math.max(cpm.duration() - 1, 0));
+            text(doc, project, "FinishDate", finish + "T17:00:00");
             text(doc, project, "MinutesPerDay", "480");
             text(doc, project, "MinutesPerWeek", "2400");
             text(doc, project, "DaysPerMonth", "20");
+            List<Holidays.Holiday> off = calendar.weekdayHolidays(start, finish);
+            if (!off.isEmpty()) {
+                text(doc, project, "CalendarUID", "1");
+                Element calendars = doc.createElementNS(MSPDI_NS, "Calendars");
+                project.appendChild(calendars);
+                Element cal = doc.createElementNS(MSPDI_NS, "Calendar");
+                calendars.appendChild(cal);
+                text(doc, cal, "UID", "1");
+                text(doc, cal, "Name", "Calendario de obra");
+                text(doc, cal, "IsBaseCalendar", "1");
+                Element exceptions = doc.createElementNS(MSPDI_NS, "Exceptions");
+                cal.appendChild(exceptions);
+                for (Holidays.Holiday h : off) {
+                    Element ex = doc.createElementNS(MSPDI_NS, "Exception");
+                    exceptions.appendChild(ex);
+                    text(doc, ex, "EnteredByOccurrences", "0");
+                    Element period = doc.createElementNS(MSPDI_NS, "TimePeriod");
+                    ex.appendChild(period);
+                    text(doc, period, "FromDate", h.date() + "T00:00:00");
+                    text(doc, period, "ToDate", h.date() + "T23:59:00");
+                    text(doc, ex, "Occurrences", "1");
+                    text(doc, ex, "Name", h.name());
+                    text(doc, ex, "Type", "1");
+                    text(doc, ex, "DayWorking", "0");
+                }
+            }
             Element tasks = doc.createElementNS(MSPDI_NS, "Tasks");
             project.appendChild(tasks);
             for (Cpm.ActivityInput a : schedule.activities()) {
@@ -65,8 +100,8 @@ public final class Exports {
                 text(doc, task, "ID", String.valueOf(uid.get(a.code())));
                 text(doc, task, "Name", a.code() + " " + a.name());
                 text(doc, task, "WBS", a.code());
-                text(doc, task, "Start", WorkCalendar.workday(start, times.es()) + "T08:00:00");
-                text(doc, task, "Finish", WorkCalendar.workday(start, times.ef() - 1) + "T17:00:00");
+                text(doc, task, "Start", calendar.workdayOf(start, times.es()) + "T08:00:00");
+                text(doc, task, "Finish", calendar.workdayOf(start, times.ef() - 1) + "T17:00:00");
                 text(doc, task, "Duration", "PT" + (a.duration() * 8) + "H0M0S");
                 text(doc, task, "DurationFormat", "7");
                 text(doc, task, "Critical", times.critical() ? "1" : "0");

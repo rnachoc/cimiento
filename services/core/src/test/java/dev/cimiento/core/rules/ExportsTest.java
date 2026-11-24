@@ -162,4 +162,20 @@ class ExportsTest {
         String longTitle = "Presupuesto ".repeat(10);
         assertThat(Exports.bc3("E-001", longTitle, MONDAY, twoLines()).split("\r\n")[2].split("\\|")[3]).hasSizeLessThanOrEqualTo(64);
     }
+
+    @Test
+    void mspdiSkipsHolidaysAndListsThemAsNonWorkingExceptions() throws Exception {
+        var national = new WorkCalendar(WorkCalendar.Kind.ES_NATIONAL, Map.of());
+        Document doc = parse(Exports.mspdi("Planning T-1", MONDAY, SCHEDULE, national));
+        // 15 working days from Monday 4 January 2027 with Epiphany (Wednesday 6) end on Monday 25
+        assertThat(child(doc.getDocumentElement(), "FinishDate")).isEqualTo("2027-01-25T17:00:00");
+        NodeList ex = doc.getElementsByTagNameNS("*", "Exception");
+        assertThat(ex.getLength()).isEqualTo(1);
+        assertThat(child((Element) ex.item(0), "Name")).isEqualTo("Epifanía del Señor");
+        assertThat(child((Element) ex.item(0), "DayWorking")).isEqualTo("0");
+        // without holidays nothing changes
+        Document plain = parse(Exports.mspdi("Planning T-1", MONDAY, SCHEDULE));
+        assertThat(plain.getElementsByTagNameNS("*", "Calendars").getLength()).isZero();
+        assertThat(child(plain.getDocumentElement(), "FinishDate")).isEqualTo("2027-01-22T17:00:00");
+    }
 }

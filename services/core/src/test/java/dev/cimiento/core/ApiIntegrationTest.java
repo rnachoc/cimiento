@@ -582,6 +582,42 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void aSiteManagerSetsTheWorkCalendarAndTheScheduleEndFollowsIt() throws Exception {
+        long sched = body(call("POST", "/api/proposals", AGENT, schedule(""), UUID.randomUUID().toString()))
+                .get("id").asLong();
+        call("POST", "/api/proposals/" + sched + "/decision", REVIEWER, "{'outcome':'APPROVE'}", null)
+                .andExpect(status().isOk());
+        // standard calendar: 15 working days from Monday 4 January 2027 end on Friday 22
+        call("GET", "/api/tenders/" + tenderId + "/schedule", ANALYST, null, null)
+                .andExpect(jsonPath("$.endDate").value("2027-01-22"));
+        call("GET", "/api/tenders/" + tenderId + "/calendar", ANALYST, null, null)
+                .andExpect(jsonPath("$.calendar").value("NONE"))
+                .andExpect(jsonPath("$.holidaysInSpan").isEmpty());
+
+        String body = "{'calendar':'ES_NATIONAL','localHolidays':[{'date':'2027-01-20','name':'San Sebastián'}]}";
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        call("POST", "/api/tenders/" + tenderId + "/calendar", REVIEWER, body, null).andExpect(status().isForbidden());
+        session = signIn("obra", OBRA_TOKEN);
+        call("POST", "/api/tenders/" + tenderId + "/calendar", REVIEWER,
+                "{'calendar':'ES_NATIONAL','localHolidays':[{'date':'2027-01-20','name':'a'},{'date':'2027-01-20','name':'b'}]}",
+                null).andExpect(status().isUnprocessableEntity());
+        call("POST", "/api/tenders/" + tenderId + "/calendar", REVIEWER, body, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.calendar").value("ES_NATIONAL"))
+                .andExpect(jsonPath("$.holidaysInSpan.length()").value(2))
+                .andExpect(jsonPath("$.endStandard").value("2027-01-22"))
+                .andExpect(jsonPath("$.endWithCalendar").value("2027-01-26"));
+        // Epiphany and the local holiday move the end two working days
+        call("GET", "/api/tenders/" + tenderId + "/schedule", ANALYST, null, null)
+                .andExpect(jsonPath("$.endDate").value("2027-01-26"));
+        assertThat(jdbc.queryForObject("SELECT actor_person FROM audit_entry WHERE action = 'CALENDAR_CHANGED' "
+                + "AND entity_id = ?", String.class, String.valueOf(tenderId))).isEqualTo("obra");
+        // the holiday names stay out of the audit chain
+        assertThat(jdbc.queryForObject("SELECT details FROM audit_entry WHERE action = 'CALENDAR_CHANGED' "
+                + "AND entity_id = ?", String.class, String.valueOf(tenderId))).doesNotContain("San Sebastián");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
+
+    @Test
     void certificationsAreCalculatedByTheCoreIssuedByPeopleAndNeverChanged() throws Exception {
         call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null)
                 .andExpect(status().isNotFound());
