@@ -11,6 +11,11 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # three tender PDFs of up to 20 MB each (ADR 0018)
+      max-file-size: 20MB
+      max-request-size: 64MB
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
     producer:

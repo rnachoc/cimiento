@@ -71,6 +71,12 @@ public final class Authority {
                 ? List.of(new Broken(ROLE_SCOPE, "ESTIMATING does not change the work calendar")) : List.of();
     }
 
+    /** Bringing in a new tender is estimating's job (and management's); site managers do not. */
+    public static List<Broken> checkIntake(PersonRole role) {
+        return role == PersonRole.SITE_MANAGER
+                ? List.of(new Broken(ROLE_SCOPE, "SITE_MANAGER does not bring in new tenders")) : List.of();
+    }
+
     public static List<Broken> checkStage(PersonRole role, TenderStage to) {
         if (MANAGEMENT_STAGES.contains(to) && role != PersonRole.MANAGEMENT) {
             return List.of(new Broken(STAGE_RESERVED, "moving a tender to " + to + " is decided by management"));

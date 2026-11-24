@@ -26,7 +26,11 @@ public final class AccessPolicy {
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/stage"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/stage/revert"), Set.of(Role.REVIEWER)),
             new Rule("POST", Pattern.compile("/api/tenders/\\d+/calendar"), Set.of(Role.REVIEWER)),
-            new Rule("POST", Pattern.compile("/api/tenders/\\d+/certifications"), Set.of(Role.REVIEWER)));
+            new Rule("POST", Pattern.compile("/api/tenders/\\d+/certifications"), Set.of(Role.REVIEWER)),
+            // tender intake: a person uploads; the agent worker claims and reports (ADR 0018)
+            new Rule("POST", Pattern.compile("/api/intakes"), Set.of(Role.REVIEWER)),
+            new Rule("POST", Pattern.compile("/api/intakes/claim"), Set.of(Role.AGENT)),
+            new Rule("POST", Pattern.compile("/api/intakes/\\d+/result"), Set.of(Role.AGENT)));
 
     private AccessPolicy() {
     }

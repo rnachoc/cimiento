@@ -617,6 +617,68 @@ class ApiIntegrationTest {
         call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
     }
 
+    private ResultActions upload(String code, String start, byte[] pliego) throws Exception {
+        var req = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/intakes")
+                .file(new org.springframework.mock.web.MockMultipartFile("pliego", "pliego.pdf", "application/pdf", pliego))
+                .param("code", code).param("title", "Reforma del mercado municipal").param("plannedStart", start)
+                .header("X-Api-Key", REVIEWER);
+        if (session != null) {
+            req.cookie(session);
+        }
+        return mvc.perform(req);
+    }
+
+    @Test
+    void aPersonUploadsATenderAndTheAgentWorkerTakesItThroughTheCore() throws Exception {
+        byte[] pdf = "%PDF-1.4 pliego de prueba".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        String code = "N-" + UUID.randomUUID().toString().substring(0, 8);
+        // site managers do not bring in tenders; files must be PDFs and the start a Monday
+        session = signIn("obra", OBRA_TOKEN);
+        upload(code, "2027-02-01", pdf).andExpect(status().isForbidden());
+        session = signIn("estudios", ESTUDIOS_TOKEN);
+        upload(code, "2027-02-02", "hola".getBytes()).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0]").value("the planned start must be a Monday"))
+                .andExpect(jsonPath("$.details[1]").value("pliego is not a PDF"));
+        long id = body(upload(code, "2027-02-01", pdf).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("QUEUED")).andExpect(jsonPath("$.documents").value(1)))
+                .get("id").asLong();
+        upload(code, "2027-02-01", pdf).andExpect(status().isConflict());
+
+        // only the agent worker claims; a job is taken once
+        call("POST", "/api/intakes/claim", REVIEWER, "{}", null).andExpect(status().isForbidden());
+        call("POST", "/api/intakes/claim", AGENT, "{}", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id)).andExpect(jsonPath("$.code").value(code))
+                .andExpect(jsonPath("$.documents[0].name").value("pliego"));
+        call("POST", "/api/intakes/claim", AGENT, "{}", null).andExpect(status().isNoContent());
+        byte[] back = call("GET", "/api/intakes/" + id + "/documents/pliego", AGENT, null, null)
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        assertThat(back).isEqualTo(pdf);
+
+        // the agents register the tender in the intake project as usual, then report
+        call("POST", "/api/intakes/" + id + "/result", AGENT, "{'ok':true,'tenderId':" + tenderId + ",'proposals':3}", null)
+                .andExpect(status().isUnprocessableEntity());
+        long created = body(call("POST", "/api/tenders", AGENT, "{'projectCode':'LICITACIONES','code':'" + code
+                + "','title':'Licitación " + code + "','contractTermMonths':6,'plannedStart':'2027-02-01'}", null)
+                .andExpect(status().isCreated())).get("id").asLong();
+        call("POST", "/api/intakes/" + id + "/result", REVIEWER, "{'ok':true,'tenderId':" + created + "}", null)
+                .andExpect(status().isForbidden());
+        call("POST", "/api/intakes/" + id + "/result", AGENT, "{'ok':true,'tenderId':" + created + ",'proposals':3}", null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DONE"));
+        call("POST", "/api/intakes/" + id + "/result", AGENT, "{'ok':false,'message':'x'}", null)
+                .andExpect(status().isConflict());
+        call("GET", "/api/intakes", ANALYST, null, null)
+                .andExpect(jsonPath("$[?(@.code == '" + code + "')].tenderId").value(org.hamcrest.Matchers.hasItem((int) created)));
+        // the audit records who uploaded and what the worker reported, never document text
+        assertThat(jdbc.queryForObject("SELECT actor_person FROM audit_entry WHERE action = 'INTAKE_RECEIVED' "
+                + "AND entity_id = ?", String.class, String.valueOf(id))).isEqualTo("estudios");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_entry WHERE action = 'INTAKE_ANALYSED' "
+                + "AND entity_id = ?", Long.class, String.valueOf(id))).isEqualTo(1);
+        // the stored documents cannot be rewritten
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update(
+                "UPDATE intake_document SET size = 0 WHERE intake_id = ?", id)).hasMessageContaining("immutable");
+        call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
+    }
+
     @Test
     void certificationsAreCalculatedByTheCoreIssuedByPeopleAndNeverChanged() throws Exception {
         call("GET", "/api/tenders/" + tenderId + "/certification", ANALYST, null, null)
