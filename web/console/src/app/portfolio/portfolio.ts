@@ -26,6 +26,7 @@ export function daysLeft(date: string, today: Date = new Date()): number {
       <p class="eyebrow">Cartera de licitaciones</p>
       <h1 id="pf-title"><span class="count" data-testid="open-count">{{ open().length }}</span> licitaciones abiertas</h1>
       <p class="lede">Cada cambio de etapa lo valida el núcleo: decidir ofertar exige el análisis del pliego aprobado y un motivo; presentar exige que no quede nada por revisar.</p>
+      <a class="btn btn-approve new" routerLink="/licitaciones/nueva" data-testid="new-tender">+ Nueva licitación</a>
       <div class="stats">
         <div class="stat glass"><span class="n alert" data-testid="due-soon">{{ dueSoon() }}</span><span>vencen en 7 días o menos</span></div>
         <div class="stat glass"><span class="n">{{ waiting() }}</span><span>propuestas por revisar</span></div>
@@ -112,7 +113,8 @@ export function daysLeft(date: string, today: Date = new Date()): number {
     .hero { padding: 88px 8px 28px; }
     h1 { font-size: clamp(2.2rem, 5.5vw, 4.4rem); line-height: 1.02; letter-spacing: -0.04em; margin: 12px 0 18px; max-width: 16ch; }
     .count { background: linear-gradient(120deg, var(--accent), #b6ff8f 40%, var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0 0 30px; }
+    .lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0 0 18px; }
+    .new { display: inline-flex; margin: 0 0 26px; text-decoration: none; }
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
     .stat { padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
     .n { font-size: 2.2rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }

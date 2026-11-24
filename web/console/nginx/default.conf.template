@@ -21,6 +21,8 @@ server {
     add_header Cache-Control "no-store" always;
 
     location /api/ {
+        # tender uploads: three PDFs of up to 20 MB each (the core checks the same limits)
+        client_max_body_size 64m;
         proxy_pass ${CORE_URL};
         proxy_set_header X-Api-Key "${CIMIENTO_REVIEWER_KEY}";
         proxy_set_header Host $host;

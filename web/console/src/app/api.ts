@@ -40,6 +40,11 @@ export interface PortfolioItem {
   revertTo: Stage | null; lastMovedBy: string | null;
 }
 export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; person?: string | null; at: string; revert?: boolean; }
+export interface IntakeView {
+  id: number; code: string; title: string; plannedStart: string; status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
+  documents: number; bytes: number; uploadedBy: string; createdAt: string; startedAt: string | null;
+  finishedAt: string | null; tenderId: number | null; proposals: number | null; message: string | null;
+}
 export type CalendarKind = 'NONE' | 'ES_NATIONAL';
 export interface Holiday { date: string; name: string; }
 export interface CalendarView {
@@ -116,6 +121,14 @@ export class Api {
 
   stages(tenderId: number): Observable<StageChange[]> {
     return this.http.get<StageChange[]>(`/api/tenders/${tenderId}/stages`);
+  }
+
+  intakes(): Observable<IntakeView[]> {
+    return this.http.get<IntakeView[]>('/api/intakes');
+  }
+
+  uploadIntake(form: FormData): Observable<IntakeView> {
+    return this.http.post<IntakeView>('/api/intakes', form);
   }
 
   calendar(tenderId: number): Observable<CalendarView> {
