@@ -76,6 +76,9 @@ make eval-retrieval       # search eval; first run downloads about 0.8 GB of loc
 
 `make flow` sends a tender through Kafka (intake, agents, proposals, a reviewer decision, dead letters and replay) against real Postgres, Kafka and core. `make e2e` lets a real Chromium approve a proposal through the console. `make observability` checks the telemetry stack. `make help` lists every target.
 
+## Manuals
+User and deployment manuals in Spanish and English: [docs/manuals](docs/manuals/README.md). The deployment manual says what is ready and what a company must solve first (tender intake, real documents, single sign-on, backups).
+
 ## Observability
 One trace per tender with a span per agent, per model call (GenAI conventions: model and tokens) and per core request; metrics for tokens, latency and proposals; a provisioned Grafana dashboard. Spans carry identifiers, counts and timings only: a test processes every eval tender and checks every attribute, and `make cost-report` fails if any span matches document text. `make observability` starts the collector, Prometheus, Jaeger and Grafana and checks each of them; `make cost-report` turns tokens into cost for priced models only.
 
