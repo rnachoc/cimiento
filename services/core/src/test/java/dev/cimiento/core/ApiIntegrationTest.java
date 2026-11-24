@@ -653,6 +653,17 @@ class ApiIntegrationTest {
         // audited with the person, and the chain stays valid
         assertThat(jdbc.queryForObject("SELECT actor_person FROM audit_entry WHERE action = 'CERTIFICATION_ISSUED'",
                 String.class)).isEqualTo("obra");
+        // the issued snapshot downloads as a PDF; an unknown number is a 404
+        var pdf = call("GET", "/api/tenders/" + tenderId + "/certifications/1/pdf", ANALYST, null, null)
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentType("application/pdf"))
+                .andReturn().getResponse();
+        assertThat(pdf.getHeader("Content-Disposition")).contains("certificacion-").contains("-01-2027-01.pdf");
+        assertThat(new String(pdf.getContentAsByteArray(), 0, 5, java.nio.charset.StandardCharsets.US_ASCII))
+                .isEqualTo("%PDF-");
+        call("GET", "/api/tenders/" + tenderId + "/certifications/99/pdf", ANALYST, null, null)
+                .andExpect(status().isNotFound());
         call("GET", "/api/audit/verify", ANALYST, null, null).andExpect(jsonPath("$.valid").value(true));
         // a certification is frozen: the database refuses to change or remove it
         assertThatThrownBy(() -> jdbc.update("UPDATE certification SET payable = 0"))

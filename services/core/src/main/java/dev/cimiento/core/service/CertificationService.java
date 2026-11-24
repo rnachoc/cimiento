@@ -51,6 +51,13 @@ public class CertificationService {
                              BigDecimal vat, BigDecimal payable, String issuedBy, Instant issuedAt, JsonNode lines) {
     }
 
+    /** A rendered document ready to download. */
+    public record PdfFile(String filename, byte[] content) {
+    }
+
+    /** Fictional contractor printed on every document. */
+    static final String COMPANY = "Constructora Brisa";
+
     private final TenderRepository tenders;
     private final CertificationRepository certifications;
     private final RateRepository rates;
@@ -115,6 +122,29 @@ public class CertificationService {
         audit.append(actor, "CERTIFICATION_ISSUED", "certification", saved.getId(), details,
                 t.getProject().getCode());
         return view(saved);
+    }
+
+    /** The PDF of an issued certification, drawn from its frozen snapshot (never recalculated). */
+    @Transactional(readOnly = true)
+    public PdfFile pdf(Long tenderId, int number) {
+        Tender t = tender(tenderId);
+        CertificationRecord c = certifications.findByTenderIdOrderByNumber(tenderId).stream()
+                .filter(r -> r.getNumber() == number).findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                        "certification " + number + " of tender " + tenderId + " not found"));
+        List<CertificationPdf.Line> lines = new ArrayList<>();
+        for (JsonNode n : json.read(c.getLines())) {
+            lines.add(new CertificationPdf.Line(n.path("code").asText(), n.path("activity").asText(),
+                    n.path("description").asText(), n.path("amount").decimalValue(), n.path("pct").asInt(),
+                    n.path("toDate").decimalValue(), n.path("previous").decimalValue(),
+                    n.path("period").decimalValue()));
+        }
+        byte[] bytes = CertificationPdf.render(new CertificationPdf.Doc(COMPANY, t.getCode(), t.getTitle(),
+                c.getNumber(), c.getMonth(), c.getCutWeek(), c.getIssuedBy(), c.getIssuedAt(), lines, c.getBudget(),
+                c.getToDate(), c.getPrevious(), c.getPeriod(), c.getRetention(), c.getNet(), c.getVat(),
+                c.getPayable()));
+        String name = String.format("certificacion-%s-%02d-%s.pdf", t.getCode(), c.getNumber(), c.getMonth());
+        return new PdfFile(name, bytes);
     }
 
     private Tender tender(Long id) {

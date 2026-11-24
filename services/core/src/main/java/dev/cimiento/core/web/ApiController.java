@@ -152,6 +152,16 @@ public class ApiController {
         return certifications.list(id);
     }
 
+    @GetMapping("/tenders/{id}/certifications/{number}/pdf")
+    public ResponseEntity<byte[]> certificationPdf(@PathVariable Long id, @PathVariable int number) {
+        var file = certifications.pdf(id, number);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(file.filename()).build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(file.content());
+    }
+
     @PostMapping("/tenders/{id}/certifications")
     public ResponseEntity<CertificationService.IssuedView> issueCertification(
             @RequestAttribute(ApiKeyFilter.ACTOR_ATTRIBUTE) Actor actor, @PathVariable Long id,
