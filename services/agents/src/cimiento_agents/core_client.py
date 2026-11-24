@@ -18,6 +18,9 @@ from . import telemetry, tracing
 ALLOWED = (
     ("POST", re.compile(r"^/api/tenders$")),
     ("POST", re.compile(r"^/api/proposals$")),
+    # intake worker: take an uploaded tender and report how the analysis went (ADR 0018)
+    ("POST", re.compile(r"^/api/intakes/claim$")),
+    ("POST", re.compile(r"^/api/intakes/\d+/result$")),
     ("GET", re.compile(r"^/api/[A-Za-z0-9/_?=&.-]+$")),
 )
 

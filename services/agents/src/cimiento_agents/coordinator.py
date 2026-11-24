@@ -62,6 +62,7 @@ class TenderRun:
     schedule: dict | None = None
     progress: ProgressReport | None = None
     reports: list[str] = field(default_factory=list)
+    tender_id: int | None = None
 
 
 def _merge(*groups: list[Citation]) -> list[Citation]:
@@ -77,7 +78,12 @@ def _merge(*groups: list[Citation]) -> list[Citation]:
 
 
 def _analyse_tender(
-    folder: Path, model: Model, core: Core, planned_start: str, rates: dict[str, Rate] | None = None
+    folder: Path,
+    model: Model,
+    core: Core,
+    planned_start: str,
+    rates: dict[str, Rate] | None = None,
+    title: str | None = None,
 ) -> TenderRun:
     """Bid analysis always; with company rates also takeoff, budget, risks, bid/no-bid
     and the proposal draft."""
@@ -126,8 +132,9 @@ def _analyse_tender(
         run.errors.append("contract term not found")
         telemetry.event("contract_term_missing", tender=docs.tender)
     tender = core.register_tender(
-        PROJECT, docs.tender, f"Licitación {docs.tender}", term, planned_start
+        PROJECT, docs.tender, title or f"Licitación {docs.tender}", term, planned_start
     )
+    run.tender_id = tender["id"]
     payload = {
         "fields": run.fields,
         # where each field was read; the core stores JSON with sorted keys, so order cannot carry it
@@ -291,11 +298,16 @@ def analyse_site(run: TenderRun, folder: Path, core: Core, tender_id: int) -> No
 
 
 def analyse_tender(
-    folder: Path, model: Model, core: Core, planned_start: str, rates: dict[str, Rate] | None = None
+    folder: Path,
+    model: Model,
+    core: Core,
+    planned_start: str,
+    rates: dict[str, Rate] | None = None,
+    title: str | None = None,
 ) -> TenderRun:
     """One trace per tender: every agent, model call and core request below this span."""
     with tracing.span("cimiento.tender", **{"cimiento.tender.id": folder.name}) as s:
-        run = _analyse_tender(folder, model, core, planned_start, rates)
+        run = _analyse_tender(folder, model, core, planned_start, rates, title)
         tracing.set_attributes(
             s, **{"cimiento.proposals": len(run.proposal_ids), "cimiento.source": run.source}
         )
