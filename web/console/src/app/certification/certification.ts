@@ -109,11 +109,13 @@ export function issueBlock(role: string | undefined, preview: CertPreview | null
         @if (issued().length) {
           <div class="scroll">
             <table data-testid="issued">
-              <thead><tr><th>Nº</th><th>Mes</th><th class="n">Semana</th><th class="n">Este periodo</th><th class="n">Total a facturar</th><th>Emitida por</th></tr></thead>
+              <thead><tr><th>Nº</th><th>Mes</th><th class="n">Semana</th><th class="n">Este periodo</th><th class="n">Total a facturar</th><th>Emitida por</th><th><span class="sr-only">Documento</span></th></tr></thead>
               <tbody>
                 @for (c of issued(); track c.id) {
                   <tr><td>{{ c.number }}</td><td>{{ c.month }}</td><td class="n">{{ c.cutWeek }}</td><td class="n">{{ eur(c.period) }}</td>
-                    <td class="n">{{ eur(c.payable) }}</td><td>{{ c.issuedBy }}</td></tr>
+                    <td class="n">{{ eur(c.payable) }}</td><td>{{ c.issuedBy }}</td>
+                    <td><a class="pdf" [href]="pdfUrl(p.tenderId, c.number)" download [attr.data-testid]="'pdf-' + c.number"
+                           [attr.aria-label]="'Descargar en PDF la certificación ' + c.number">PDF ↓</a></td></tr>
                 }
               </tbody>
             </table>
@@ -150,6 +152,9 @@ export function issueBlock(role: string | undefined, preview: CertPreview | null
     .issue { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 18px; }
     .muted { color: var(--muted); } .small { font-size: .85rem; margin-top: 14px; }
     .error { padding: 20px 24px; margin: 24px 8px; border-color: rgba(255,61,113,.6); }
+    .pdf { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--accent); font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .pdf:hover { border-color: var(--accent); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     @media (max-width: 520px) { .panel { padding: 16px; } .totals { max-width: none; } }
   `,
 })
@@ -178,6 +183,11 @@ export class Certifications {
         ? 'Esta licitación aún no tiene presupuesto y avance de obra.' : 'No se pudo cargar la certificación.'),
     });
     this.api.certifications(id).subscribe({ next: (c) => this.issued.set(c) });
+  }
+
+  /** The issued snapshot as a PDF, drawn by the core. */
+  pdfUrl(tenderId: number, number: number): string {
+    return `/api/tenders/${tenderId}/certifications/${number}/pdf`;
   }
 
   pick(month: string): void {

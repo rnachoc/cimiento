@@ -53,13 +53,13 @@ describe('Certifications view', () => {
 
   afterEach(() => http.verify());
 
-  async function render() {
+  async function render(issued: unknown[] = []) {
     const fixture = TestBed.createComponent(Certifications);
     fixture.componentRef.setInput('id', '3');
     fixture.detectChanges();
     await fixture.whenStable();
     http.expectOne('/api/tenders/3/certification').flush(PREVIEW);
-    http.expectOne('/api/tenders/3/certifications').flush([]);
+    http.expectOne('/api/tenders/3/certifications').flush(issued);
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
@@ -88,6 +88,15 @@ describe('Certifications view', () => {
     http.expectOne('/api/tenders/3/certifications').flush([]);
     await fixture.whenStable();
     expect(fixture.componentInstance.feedback()).toContain('Certificación 1 emitida');
+  });
+
+  it('links every issued certification to its PDF, drawn by the core', async () => {
+    const el = (await render([{ id: 1, number: 1, month: '2027-05', cutWeek: 3, budget: 3500, toDate: 1100, previous: 0,
+      period: 1100, retention: 55, net: 1045, vat: 219.45, payable: 1264.45, issuedBy: 'obra', issuedAt: 't' }]))
+      .nativeElement as HTMLElement;
+    const link = el.querySelector('[data-testid="pdf-1"]') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/api/tenders/3/certifications/1/pdf');
+    expect(link.hasAttribute('download')).toBe(true);
   });
 
   it('disables issuing for estimating and shows the core rules that block a month', async () => {
