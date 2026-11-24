@@ -40,6 +40,12 @@ export interface PortfolioItem {
   revertTo: Stage | null; lastMovedBy: string | null;
 }
 export interface StageChange { id: number; from: Stage; to: Stage; note: string | null; actorRole: string; person?: string | null; at: string; revert?: boolean; }
+export type CalendarKind = 'NONE' | 'ES_NATIONAL';
+export interface Holiday { date: string; name: string; }
+export interface CalendarView {
+  tenderId: number; tenderCode: string; calendar: CalendarKind; localHolidays: Holiday[]; from: string; to: string;
+  holidaysInSpan: Holiday[]; durationDays: number | null; endStandard: string | null; endWithCalendar: string | null;
+}
 export type PersonRole = 'ESTIMATING' | 'SITE_MANAGER' | 'MANAGEMENT';
 export interface Person { username: string; displayName: string; role: PersonRole; scope: string[]; }
 export interface CurvePoint { week: number; plannedPct: number; actualPct: number; }
@@ -110,6 +116,14 @@ export class Api {
 
   stages(tenderId: number): Observable<StageChange[]> {
     return this.http.get<StageChange[]>(`/api/tenders/${tenderId}/stages`);
+  }
+
+  calendar(tenderId: number): Observable<CalendarView> {
+    return this.http.get<CalendarView>(`/api/tenders/${tenderId}/calendar`);
+  }
+
+  setCalendar(tenderId: number, calendar: CalendarKind, localHolidays: Holiday[]): Observable<CalendarView> {
+    return this.http.post<CalendarView>(`/api/tenders/${tenderId}/calendar`, { calendar, localHolidays });
   }
 
   revertStage(tenderId: number, note: string): Observable<PortfolioItem> {

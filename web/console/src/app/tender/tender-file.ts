@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Api, euros, PortfolioItem, Proposal, STAGE_LABELS, StageChange, TYPE_LABELS } from '../api';
 import { daysLeft } from '../portfolio/portfolio';
 import { scheduleBars } from '../proposal/proposal-detail';
+import { WorkCalendar } from './work-calendar';
 
 const FIELD_LABELS: Record<string, string> = {
   presupuesto_base_eur: 'Presupuesto base',
@@ -31,7 +32,7 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
 /** Everything about one tender on one page: what the documents say, what the agents propose, what the core decided. */
 @Component({
   selector: 'app-tender-file',
-  imports: [RouterLink],
+  imports: [RouterLink, WorkCalendar],
   template: `
     <a routerLink="/cartera" class="back">← Cartera</a>
     @if (error()) { <p class="error glass" role="alert">{{ error() }}</p> }
@@ -105,6 +106,8 @@ interface Fact { key: string; label: string; value: string; cite: Source | null;
             </div>
           } @else { <p class="muted">Sin planning propuesto.</p> }
         </section>
+
+        <app-work-calendar class="wide" [tenderId]="t.tenderId" />
 
         <section class="panel glass reveal" aria-labelledby="f-docs">
           <h2 id="f-docs">Informes y borradores</h2>

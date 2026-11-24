@@ -66,6 +66,9 @@ describe('new views', () => {
     ]);
     http.expectOne('/api/tenders/7/stages').flush([{ id: 1, from: 'TO_REVIEW', to: 'UNDER_REVIEW', note: null, actorRole: 'REVIEWER', at: '2026-11-18T11:00:00Z' }]);
     await fixture.whenStable();
+    http.expectOne('/api/tenders/7/calendar').flush({ tenderId: 7, tenderCode: 'E-001', calendar: 'NONE', localHolidays: [],
+      from: '2027-01-04', to: '2027-01-22', holidaysInSpan: [], durationDays: 15, endStandard: '2027-01-22', endWithCalendar: '2027-01-22' });
+    await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     const text = el.textContent ?? '';
     expect(el.querySelector('[data-testid="stage"]')?.textContent).toContain('En estudio');
