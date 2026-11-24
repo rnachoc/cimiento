@@ -21,14 +21,16 @@ fi
 set -a; . "$STATE"; set +a
 export POSTGRES_PORT="${DEMO_POSTGRES_PORT:-35432}" CORE_PORT="${DEMO_CORE_PORT:-38080}" CONSOLE_PORT="${DEMO_CONSOLE_PORT:-38088}"
 CORE_URL="http://localhost:${CORE_PORT}"
-COMPOSE=(docker compose -p cimiento-demo -f "$ROOT/deploy/docker-compose.yml" --env-file "$ROOT/.env" --profile app)
+# the shell decides whether the agents use Claude: an empty value here overrides any key in .env
+export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
+COMPOSE=(docker compose -p cimiento-demo -f "$ROOT/deploy/docker-compose.yml" --env-file "$ROOT/.env" --profile app --profile worker)
 
 echo "==> 1/4 synthetic data"
 [ -f data/generated/eval/manifest.json ] || make --no-print-directory data
 
 echo "==> 2/4 core and review console (first run builds the images, a few minutes)"
 "${COMPOSE[@]}" up -d --wait postgres
-"${COMPOSE[@]}" up -d --build core console
+"${COMPOSE[@]}" up -d --build core console agents-worker
 for i in $(seq 1 120); do
   curl -sf "${CORE_URL}/actuator/health" >/dev/null && curl -sf "http://localhost:${CONSOLE_PORT}/" >/dev/null && break
   [ "$i" = 120 ] && { echo "services did not start"; "${COMPOSE[@]}" logs core | tail -30; exit 1; }
@@ -44,6 +46,7 @@ sed -n '1,12p' "$ROOT/evals/reports/scorecard.md"
 cat <<EOF
 
 Review console:  http://localhost:${CONSOLE_PORT}   (approve, correct or reject the proposals)
+New tender:      http://localhost:${CONSOLE_PORT}/licitaciones/nueva   (upload PDFs; the worker analyses them)
   Sign in as:    gerencia / ${GERENCIA_TOKEN}   (management: decides everything)
                  estudios / ${ESTUDIOS_TOKEN}   (estimating: bids, takeoffs, budgets)
                  obra     / ${OBRA_TOKEN}   (site manager: schedules, progress, reports)

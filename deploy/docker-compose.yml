@@ -73,6 +73,22 @@ services:
     depends_on:
       - core
 
+  # Intake worker profile: `--profile app --profile worker` (used by `make demo`). It analyses the tenders
+  # people upload in the console. Keyless unless ANTHROPIC_API_KEY is set (billed to that key).
+  agents-worker:
+    profiles: ["worker"]
+    build: ../services/agents
+    environment:
+      CORE_URL: http://core:8080
+      CIMIENTO_AGENT_KEY: ${CIMIENTO_AGENT_KEY:?set CIMIENTO_AGENT_KEY}
+      CIMIENTO_RATES: /config/tarifas.json
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${CIMIENTO_RATES_FILE:-../data/generated/eval/company/tarifas.json}:/config/tarifas.json:ro
+    depends_on:
+      - core
+    restart: unless-stopped
+
   # Observability profile: `docker compose --profile observability up` (used by `make observability`).
   otel-collector:
     profiles: ["observability"]
