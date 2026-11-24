@@ -247,5 +247,15 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Consola: botón "Volver a …" en la cartera (con motivo) y marca "(deshecho)" en el historial. Los importes de Dirección y de la ficha van siempre en una línea con el símbolo del euro.
 - Tests: 4 de reglas, 1 de integración (permisos, motivo, auditoría y cadena) y 2 specs de la cartera.
 
+## Certificación en PDF
+
+### Qué se hizo
+- Núcleo: `service/CertificationPdf.java` dibuja la certificación emitida en A4 desde su foto inmutable, sin recalcular: empresa ficticia, número y mes, obra, corte, quién la emitió, relación valorada por actividad y partida, totales con retención, líquido, IVA y total a facturar. Pagina y numera las páginas. `GET /api/tenders/{id}/certifications/{number}/pdf`. Dependencia nueva: Apache PDFBox 3.0.3 (ADR 0016).
+- Consola: enlace "PDF ↓" en cada certificación emitida.
+- Tests: `CertificationPdfTest` (4), integración (tipo, nombre de archivo, 404) y 1 spec de consola.
+
+### Deuda conocida
+- Sin firma electrónica: el PDF es copia de lo emitido y auditado.
+
 ## Siguiente paso
-Hechas la 15, la 18 y el deshacer. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
+Hechas la 15, la 18, el deshacer y el PDF de certificación. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
