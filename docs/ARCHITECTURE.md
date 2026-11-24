@@ -141,7 +141,7 @@ stateDiagram-v2
     IN_PREPARATION --> DISCARDED: reason
 ```
 
-`GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain. Each issued certification downloads as a PDF drawn from its stored snapshot, never recalculated (Apache PDFBox, ADR 0016). The last move can be undone while the tender is under review, decision pending or in preparation, by whoever made it or by management, as a new audited move (`TENDER_STAGE_REVERTED`, ADR 0015); a submitted bid cannot be taken back.
+`GET /api/portfolio` shows each tender with its stage, the submission deadline from the latest bid analysis (marked when not yet approved), the bid/no-bid recommendation and the proposals waiting for review. Each move is audited; the written reason is kept in `tender_stage_change`, outside the audit chain. Each work has a calendar: Monday to Friday by default, or with the national holidays of Spain and its own local holidays, set by a site manager or management and audited (ADR 0017); the schedule end, the contract-term rule, the site forecast and the MS Project export follow it. Each issued certification downloads as a PDF drawn from its stored snapshot, never recalculated (Apache PDFBox, ADR 0016). The last move can be undone while the tender is under review, decision pending or in preparation, by whoever made it or by management, as a new audited move (`TENDER_STAGE_REVERTED`, ADR 0015); a submitted bid cannot be taken back.
 
 ## Site progress and management figures
 

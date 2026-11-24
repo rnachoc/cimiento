@@ -257,5 +257,17 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 ### Deuda conocida
 - Sin firma electrónica: el PDF es copia de lo emitido y auditado.
 
+## Fase 16: calendario laboral con festivos
+
+### Qué se hizo
+- Reglas: `rules/Holidays.java` (diez festivos nacionales comunes a toda España, Viernes Santo por el algoritmo de Pascua) y `WorkCalendar` con instancias: estándar sin festivos (por defecto), nacionales de España, y festivos locales o autonómicos con nombre.
+- Núcleo: V9 (`tender.calendar`, `tender.local_holidays`), `GET/POST /api/tenders/{id}/calendar` (jefatura de obra o gerencia; estudios no), auditoría `CALENDAR_CHANGED` sin los nombres. Lo usan el fin del planning y la regla de plazo, la vista del planning (se recalcula con el calendario actual), el seguimiento de obra y la exportación a MS Project (con los festivos como excepciones). ADR 0017.
+- Consola: panel "Calendario laboral" en la ficha: selector, festivos locales, festivos dentro de la obra y cuánto mueven el fin.
+- Tests: 4 de reglas (Pascua, festivos de 2027, el calendario estándar igual al de siempre en 600 días, festivos en laborable), 1 de exportación, 1 de integración y 4 de consola.
+
+### Deuda conocida
+- Los festivos que caen en domingo no se trasladan (depende de cada comunidad). Sin medias jornadas, horario de verano ni calendarios por actividad.
+- Las excepciones del XML de MS Project no se han abierto en MS Project.
+
 ## Siguiente paso
-Hechas la 15, la 18, el deshacer y el PDF de certificación. Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
+Hechas la 15, la 16, la 18, el deshacer y el PDF de certificación. Quedan la 17 (modificados) y la 19 (revisión previa a la presentación). Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
