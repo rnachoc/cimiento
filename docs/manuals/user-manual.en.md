@@ -30,6 +30,7 @@ Each person has one of three roles. The core always checks the role, even if a s
 | Decide quantities, budget, bid analysis and draft documents | Yes | No | Yes |
 | Decide schedule, site progress, reports and risks | No | Yes | Yes |
 | Decide amounts at or above the threshold (EUR 1,000,000 excluding VAT by default) | No | No | Yes |
+| Upload new tenders | Yes | No | Yes |
 | Move tenders between stages | Yes, except "Preparando oferta" (preparing the bid) and "Descartada" (discarded) | No | Yes |
 | Undo the last stage move | Only their own | No | Yes |
 | Change the work calendar of a work | No | Yes | Yes |
@@ -73,6 +74,18 @@ Each card shows the code, the agents' recommendation (bid, no bid or review), th
 - A bid can only be marked as **submitted** when no proposal of the tender waits for review.
 
 **Undoing a mistake:** if you move a tender by mistake, press **↩ Volver a ...** (back to ...) on the card and write the reason. The last move can be undone while the tender is under review, decision pending or preparing the bid. Whoever made the move, or management, can undo it. A **submitted** bid cannot be taken back: create a new tender instead. Undoing deletes nothing: it is one more move in the history, marked "(deshecho)" (undone).
+
+## 5a. Uploading a new tender
+
+In **Cartera**, press **+ Nueva licitación** (new tender).
+
+1. Type the **code** (for example `LIC-2027-014`; letters, digits, dot, dash and underscore), the **title** and the **planned start** of the work, which must be a Monday.
+2. Attach the PDF documents: the **pliego** (specification, required), the **anexo** (annex) and the **mediciones** (bill of quantities). Each file can be up to 20 MB.
+3. Press **Subir y analizar** (upload and analyse).
+
+The list **Últimas subidas** (recent uploads) shows the status: "En cola" (queued), "Analizando…" (analysing), "Lista para revisar" (ready for review) or "Error". It refreshes by itself. When it is ready, **Ver ficha →** opens the tender and **Revisar** goes to the inbox, where its proposals wait: facts with citations, quantities, budget, schedule, risks and recommendation.
+
+The documents are stored as uploaded and cannot be changed. If the core refuses the upload (for example, a code that already exists), the screen says why. Only estimating and management can upload tenders.
 
 ## 6. Tender file
 

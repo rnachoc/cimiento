@@ -9,6 +9,7 @@ Cimiento is a portfolio project tested on **synthetic data**. `SECURITY.md` says
 Ready today:
 
 - The core with its rules, the hash-chained audit log and review by people with roles and four eyes.
+- Tender upload from the console and an agent worker that analyses the uploads.
 - The web console: review inbox, bid pipeline, tender files, site progress, certifications with PDF, work calendar and management view.
 - Docker containers, automatic database migrations, a read-only MCP server and observability.
 
@@ -16,7 +17,6 @@ To solve before using it with real tenders:
 
 | Topic | Today | What to do |
 |---|---|---|
-| Tender intake | No upload screen. Analysis is started by a script or through the Kafka bridge `cimiento.intake`. | Follow section 10 or build a small intake service. |
 | Reading real documents | The keyless reader is written for the format of the synthetic documents. | Real documents need a model (`ANTHROPIC_API_KEY`). Quality with a real model is **not measured**: measure it on your own tenders before relying on it. |
 | Identity | Personal tokens. No corporate single sign-on (OIDC or SAML) and no lockout after failed attempts. | Accept it for the pilot or integrate your identity provider. |
 | Removing people | Taking someone out of `CIMIENTO_PEOPLE` does not disable them. | Replace their `tokenHash` (section 5). |
@@ -32,7 +32,7 @@ To solve before using it with real tenders:
 | Console (`console`) | Angular served by nginx | 8080 (published on 8088) | Yes |
 | Database (`postgres`) | PostgreSQL 16 with pgvector | 5432 | Yes |
 | Messaging (`kafka`) | Apache Kafka 3.9 | 9092 | No (events) |
-| Agents | Python 3.12 with uv | - | Yes, to analyse tenders |
+| Agent worker (`agents-worker`) | Python 3.12, container | - | Yes, to analyse uploaded tenders |
 | Document search | Python, FastAPI | 8001 | No |
 | MCP server | Python, read-only | - | No |
 | Observability | OpenTelemetry, Jaeger, Prometheus, Grafana | several | No |
@@ -145,6 +145,9 @@ services:
     restart: unless-stopped
     ports: !override
       - "127.0.0.1:8088:8080"
+  agents-worker:
+    volumes: !override
+      - /opt/cimiento-config/tarifas.json:/config/tarifas.json:ro
 ```
 
 From outside, only the HTTPS proxy of section 8 will be reachable.
@@ -154,7 +157,7 @@ From outside, only the HTTPS proxy of section 8 will be reachable.
 To avoid repeating the command, define an alias:
 
 ```bash
-alias cim='docker compose -p cimiento -f /opt/cimiento/deploy/docker-compose.yml -f /opt/cimiento/deploy/docker-compose.prod.yml --env-file /opt/cimiento/.env --profile app'
+alias cim='docker compose -p cimiento -f /opt/cimiento/deploy/docker-compose.yml -f /opt/cimiento/deploy/docker-compose.prod.yml --env-file /opt/cimiento/.env --profile app --profile worker'
 ```
 
 First time (builds the images; takes several minutes):
@@ -236,25 +239,16 @@ Rates live in two places, and they must match:
 
 ## 10. Analysing tenders
 
-The agents run on the server (or on another machine that can reach the core) with Python and uv:
+People in estimating and management upload each tender from the console (**Cartera → + Nueva licitación**): code, title, planned start and the PDFs `pliego`, `anexo` and `mediciones`. The core stores the files and queues the job.
 
-```bash
-cd /opt/cimiento/services/agents
-uv sync
-set -a; . /opt/cimiento/.env; set +a           # role keys and ANTHROPIC_API_KEY
-export CORE_URL=http://127.0.0.1:8080
-export CIMIENTO_MODEL=claude-opus-5-5          # optional: the model your company uses
-```
+The `agents-worker` container (profile `worker`, included in the alias of section 7) takes the jobs with the agent key, reads the documents, submits proposals to the core like any agent and reports the result. The console shows the status and, when it ends, the proposals wait in the inbox.
 
-Without `ANTHROPIC_API_KEY`, the agents use the rule-based reader, which costs nothing.
+- **Rates:** the worker reads `/config/tarifas.json`. The production file of section 6 mounts the company's (`/opt/cimiento-config/tarifas.json`).
+- **Model:** without `ANTHROPIC_API_KEY` in `.env`, the worker uses the rule-based reader, at no cost. With the key it uses Claude (`CIMIENTO_MODEL` picks the model) and the text of the documents is sent to the Anthropic API. Check with the company whether that is acceptable.
+- **Several workers:** you can start more (`cim up -d --scale agents-worker=2`): the core never hands the same job to two. A job unfinished after 15 minutes is offered again.
+- **Log:** `cim logs -f agents-worker`. The report of each job carries counts or the name of an error, never document text.
 
-Each tender is a folder with up to three PDFs with fixed names: `pliego.pdf` (specification), `anexo.pdf` (annex) and `mediciones.pdf` (bill of quantities). For site progress, add `obra/avance_semanal.csv` with the same format as the sample data.
-
-Today analysis is started by a script. `scripts/demo_run.py` is the example: it creates the project, loads the rates and calls `analyse_tender(folder, model, core, planned_start, rates)` for each tender. Copy it, change the list of folders, the path of `tarifas.json` and the planned start of each work (a Monday), and run it with `uv run python your_script.py`. The proposals appear in the console inbox.
-
-For continuous use, the intended path is the event bridge: publish a message on the Kafka topic `cimiento.intake` for each new tender and run a process that consumes it with `services/agents/src/cimiento_agents/events.py` (retries and dead-letter queue included; tested by `make flow`). That service process is not packaged.
-
-With a model, the text of the documents is sent to the Anthropic API. Check with the company whether that is acceptable for its tenders.
+For bulk loads the script path (`scripts/demo_run.py` as an example) and the Kafka bridge `cimiento.intake` remain.
 
 ## 11. Optional parts
 
@@ -312,7 +306,7 @@ Test a restore at least once before relying on the backups.
 - [ ] Company rates loaded in the core and in `tarifas.json`.
 - [ ] Daily backup scheduled and one restore tested.
 - [ ] `/api/audit/verify` says the chain is intact.
-- [ ] A test tender analysed and reviewed by people of every role.
+- [ ] A test tender uploaded from the console, analysed by the worker and reviewed by people of every role.
 - [ ] Decided and written down whether a model is used and which data leave the company.
 
 ## 15. Common problems
@@ -323,5 +317,7 @@ Test a restore at least once before relying on the backups.
 | The core does not start: `CIMIENTO_PEOPLE: tokenHash of ...` | Hash copied wrong | It must be the SHA-256 in hexadecimal (64 characters) |
 | The console says the session expired | 8 hours passed, or the token changed | Sign in again |
 | A button is disabled or the action returns 403 | The person's role does not allow it | See the roles table in the user manual |
-| Proposals do not reach the inbox | Agents cannot reach the core or use the wrong key | Check `CORE_URL` and `CIMIENTO_AGENT_KEY` |
+| An upload stays "En cola" (queued) | The worker is not running | `cim ps` and `cim logs agents-worker` |
+| An upload ends in "Error" | The worker could not read or analyse the PDFs | See the error name in the console and `cim logs agents-worker` |
+| A large upload fails | Over 20 MB per file or 64 MB in total | Make the PDF smaller |
 | "no consta" facts on real tenders | The keyless reader does not understand that format | Use a model and check quality on your own documents |

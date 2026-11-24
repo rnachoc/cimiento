@@ -269,5 +269,16 @@ Retrasos detectados 42/42, falsos 0; alarmas 182/184; días exactos 32/32; impac
 - Los festivos que caen en domingo no se trasladan (depende de cada comunidad). Sin medias jornadas, horario de verano ni calendarios por actividad.
 - Las excepciones del XML de MS Project no se han abierto en MS Project.
 
+## Subida de licitaciones desde la consola
+
+### Qué se hizo
+- Núcleo: V10 (`intake`, `intake_document` inmutable), `POST /api/intakes` multipart (estudios o gerencia; PDF, 20 MB por archivo, código nuevo, inicio en lunes), `GET /api/intakes`, `POST /api/intakes/claim` y `POST /api/intakes/{id}/result` (clave de agente), `GET /api/intakes/{id}/documents/{name}`. Auditoría `INTAKE_RECEIVED` e `INTAKE_ANALYSED` sin texto. ADR 0018.
+- Agentes: `cimiento-agents worker` (cola con reintento si un trabajo se abandona, comprobación de SHA-256, carpeta temporal segura, informe sin texto) y `analyse_tender` acepta el título. Dockerfile del trabajador y perfil `worker` en compose; `make demo` lo arranca.
+- Consola: pantalla "Nueva licitación" desde la cartera, con estado en vivo y enlace a la ficha.
+- Tests: 1 de integración del núcleo, 4 del trabajador y 4 de consola.
+
+### Deuda conocida
+- Sin antivirus ni otros formatos. Con documentos reales hace falta un modelo; su calidad no está medida.
+
 ## Siguiente paso
-Hechas la 15, la 16, la 18, el deshacer y el PDF de certificación. Quedan la 17 (modificados) y la 19 (revisión previa a la presentación). Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.
+Hechas la 15, la 16, la 18, el deshacer, el PDF de certificación y la subida de licitaciones. Quedan la 17 (modificados) y la 19 (revisión previa a la presentación). Quedan sin hacer, por decisión del autor, la 16 (calendario laboral en el CPM, revisando antes `rules/WorkCalendar.java`), la 17 (modificados) y la 19 (revisión previa a la presentación). La ejecución real con Claude sigue aparcada.

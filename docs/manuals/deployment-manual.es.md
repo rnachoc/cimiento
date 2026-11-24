@@ -9,6 +9,7 @@ Cimiento es un proyecto de portfolio probado con **datos sintéticos**. `SECURIT
 Ya está listo:
 
 - El núcleo con sus reglas, la auditoría encadenada por hash y la revisión por personas con roles y cuatro ojos.
+- La subida de licitaciones desde la consola y un trabajador de agentes que las analiza.
 - La consola web: bandeja de revisión, cartera, fichas, seguimiento de obra, certificaciones con PDF, calendario laboral y vista de dirección.
 - Contenedores Docker, migraciones automáticas de base de datos, servidor MCP de solo lectura y observabilidad.
 
@@ -16,7 +17,6 @@ Hay que resolver antes de usarlo con licitaciones reales:
 
 | Tema | Situación actual | Qué hacer |
 |---|---|---|
-| Entrada de licitaciones | No hay pantalla para subir documentos. El análisis se lanza con un script o con el puente de Kafka `cimiento.intake`. | Usar el procedimiento del apartado 10 o desarrollar un pequeño servicio de entrada. |
 | Lectura de documentos reales | El lector sin clave está escrito para el formato de los documentos sintéticos. | Con documentos reales hace falta un modelo (`ANTHROPIC_API_KEY`). La calidad con un modelo real **no está medida**: medirla con licitaciones propias antes de confiar. |
 | Identidad | Tokens personales. Sin inicio de sesión corporativo (OIDC o SAML) ni bloqueo por intentos fallidos. | Aceptarlo para el piloto o integrar el proveedor de identidad. |
 | Bajas de personas | Quitar a alguien de `CIMIENTO_PEOPLE` no lo desactiva. | Sustituir su `tokenHash` (apartado 5). |
@@ -32,7 +32,7 @@ Hay que resolver antes de usarlo con licitaciones reales:
 | Consola (`console`) | Angular servido por nginx | 8080 (publicado en 8088) | Sí |
 | Base de datos (`postgres`) | PostgreSQL 16 con pgvector | 5432 | Sí |
 | Mensajería (`kafka`) | Apache Kafka 3.9 | 9092 | No (eventos) |
-| Agentes | Python 3.12 con uv | - | Sí, para analizar licitaciones |
+| Trabajador de agentes (`agents-worker`) | Python 3.12, contenedor | - | Sí, para analizar las licitaciones subidas |
 | Búsqueda en documentos | Python, FastAPI | 8001 | No |
 | Servidor MCP | Python, solo lectura | - | No |
 | Observabilidad | OpenTelemetry, Jaeger, Prometheus, Grafana | varios | No |
@@ -145,6 +145,9 @@ services:
     restart: unless-stopped
     ports: !override
       - "127.0.0.1:8088:8080"
+  agents-worker:
+    volumes: !override
+      - /opt/cimiento-config/tarifas.json:/config/tarifas.json:ro
 ```
 
 Desde fuera solo será accesible el proxy HTTPS del apartado 8.
@@ -154,7 +157,7 @@ Desde fuera solo será accesible el proxy HTTPS del apartado 8.
 Para no repetir la orden, define un alias:
 
 ```bash
-alias cim='docker compose -p cimiento -f /opt/cimiento/deploy/docker-compose.yml -f /opt/cimiento/deploy/docker-compose.prod.yml --env-file /opt/cimiento/.env --profile app'
+alias cim='docker compose -p cimiento -f /opt/cimiento/deploy/docker-compose.yml -f /opt/cimiento/deploy/docker-compose.prod.yml --env-file /opt/cimiento/.env --profile app --profile worker'
 ```
 
 Primera vez (construye las imágenes; tarda varios minutos):
@@ -236,25 +239,16 @@ Las tarifas viven en dos sitios, y deben coincidir:
 
 ## 10. Analizar licitaciones
 
-Los agentes corren en el servidor (o en otro equipo con acceso al núcleo) con Python y uv:
+Las personas de estudios y gerencia suben cada licitación desde la consola (**Cartera → + Nueva licitación**): código, título, inicio previsto y los PDF `pliego`, `anexo` y `mediciones`. El núcleo guarda los archivos y deja el trabajo en cola.
 
-```bash
-cd /opt/cimiento/services/agents
-uv sync
-set -a; . /opt/cimiento/.env; set +a           # claves de rol y ANTHROPIC_API_KEY
-export CORE_URL=http://127.0.0.1:8080
-export CIMIENTO_MODEL=claude-opus-5-5          # opcional: el modelo que use la empresa
-```
+El contenedor `agents-worker` (perfil `worker`, incluido en el alias del apartado 7) toma los trabajos con la clave de agente, lee los documentos, envía las propuestas al núcleo como cualquier agente e informa del resultado. La consola muestra el estado y, al terminar, las propuestas esperan en la bandeja.
 
-Sin `ANTHROPIC_API_KEY`, los agentes usan el lector por reglas, que no tiene coste.
+- **Tarifas:** el trabajador lee `/config/tarifas.json`. El archivo de producción del apartado 6 monta el de la empresa (`/opt/cimiento-config/tarifas.json`).
+- **Modelo:** sin `ANTHROPIC_API_KEY` en `.env`, el trabajador usa el lector por reglas, sin coste. Con la clave usa Claude (`CIMIENTO_MODEL` elige el modelo) y el texto de los documentos se envía a la API de Anthropic. Revisa con la empresa si eso es aceptable.
+- **Varios trabajadores:** se pueden arrancar más (`cim up -d --scale agents-worker=2`): el núcleo nunca entrega el mismo trabajo a dos. Un trabajo que lleva 15 minutos sin terminar se vuelve a ofrecer.
+- **Registro:** `cim logs -f agents-worker`. El informe de cada trabajo solo lleva recuentos o el nombre del error, nunca texto de los documentos.
 
-Cada licitación es una carpeta con, como máximo, tres PDF de nombre fijo: `pliego.pdf`, `anexo.pdf` y `mediciones.pdf`. Para el seguimiento de obra se añade `obra/avance_semanal.csv` con el mismo formato que los datos de ejemplo.
-
-Hoy el análisis se lanza con un script. `scripts/demo_run.py` es el ejemplo: crea el proyecto, carga las tarifas y llama a `analyse_tender(carpeta, modelo, núcleo, fecha_inicio, tarifas)` para cada licitación. Cópialo, cambia la lista de carpetas, la ruta de `tarifas.json` y la fecha de inicio prevista de cada obra (un lunes), y ejecútalo con `uv run python tu_script.py`. Las propuestas aparecen en la bandeja de la consola.
-
-Para un uso continuado, el camino previsto es el puente de eventos: publicar un mensaje en el tema de Kafka `cimiento.intake` por cada licitación nueva y tener un proceso que lo consuma con `services/agents/src/cimiento_agents/events.py` (reintentos y cola de errores incluidos; probado por `make flow`). Ese proceso de servicio no viene empaquetado.
-
-Con un modelo, el texto de los documentos se envía a la API de Anthropic. Revisa con la empresa si eso es aceptable para sus licitaciones.
+Para cargas masivas sigue existiendo el camino por script (`scripts/demo_run.py` como ejemplo) y el puente de Kafka `cimiento.intake`.
 
 ## 11. Opcionales
 
@@ -312,7 +306,7 @@ Prueba una restauración al menos una vez antes de depender de las copias.
 - [ ] Tarifas propias cargadas en el núcleo y en `tarifas.json`.
 - [ ] Copia de seguridad diaria programada y una restauración probada.
 - [ ] `/api/audit/verify` responde que la cadena está intacta.
-- [ ] Una licitación de prueba analizada y revisada por personas de cada rol.
+- [ ] Una licitación de prueba subida desde la consola, analizada por el trabajador y revisada por personas de cada rol.
 - [ ] Decidido y documentado si se usa un modelo y qué datos salen de la empresa.
 
 ## 15. Problemas frecuentes
@@ -323,5 +317,7 @@ Prueba una restauración al menos una vez antes de depender de las copias.
 | El núcleo no arranca: `CIMIENTO_PEOPLE: tokenHash of ...` | Hash mal copiado | Debe ser el SHA-256 en hexadecimal (64 caracteres) |
 | La consola dice que la sesión ha caducado | Pasaron 8 horas o se reinició con otro token | Volver a entrar |
 | Un botón está desactivado o la acción da 403 | El rol de la persona no lo permite | Ver la tabla de roles del manual de usuario |
-| Las propuestas no llegan a la bandeja | Agentes sin acceso al núcleo o con la clave equivocada | Revisar `CORE_URL` y `CIMIENTO_AGENT_KEY` |
+| Una subida se queda "En cola" | El trabajador no está arrancado | `cim ps` y `cim logs agents-worker` |
+| Una subida acaba en "Error" | El trabajador no pudo leer o analizar los PDF | Ver el nombre del error en la consola y `cim logs agents-worker` |
+| La subida falla con un archivo grande | Más de 20 MB por archivo o 64 MB en total | Reducir el PDF |
 | Datos "no consta" en licitaciones reales | El lector sin clave no entiende ese formato | Usar un modelo y revisar la calidad con documentos propios |

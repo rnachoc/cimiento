@@ -2,7 +2,7 @@
 
 A multi-agent AI system for construction: tender analysis, scheduling, site progress and questions over documents. All data is synthetic. The point of the project is to show how to build agents a company can trust: **the model proposes, the code decides.**
 
-> Status: **phases 0 to 16, 18, 20 and 21 done (17 and 19 not started); the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
+> Status: **phases 0 to 16, 18 and 20 to 22 done (17 and 19 not started); the run with real Claude models is not done yet** (the tooling is ready, see [Agents with Claude](#agents-with-claude)). Every number below is a keyless baseline measured against ground truth.
 
 ## What it does
 1. **Tenders**: read the administrative clauses and annexes, extract requirements, terms, award criteria, penalties and solvency with citations; measure quantities per trade; price them with the company's own rates; flag risks; draft a bid/no-bid report and a technical proposal.
@@ -77,7 +77,7 @@ make eval-retrieval       # search eval; first run downloads about 0.8 GB of loc
 `make flow` sends a tender through Kafka (intake, agents, proposals, a reviewer decision, dead letters and replay) against real Postgres, Kafka and core. `make e2e` lets a real Chromium approve a proposal through the console. `make observability` checks the telemetry stack. `make help` lists every target.
 
 ## Manuals
-User and deployment manuals in Spanish and English: [docs/manuals](docs/manuals/README.md). The deployment manual says what is ready and what a company must solve first (tender intake, real documents, single sign-on, backups).
+User and deployment manuals in Spanish and English: [docs/manuals](docs/manuals/README.md). The deployment manual says what is ready and what a company must solve first (real documents, single sign-on, backups).
 
 ## Observability
 One trace per tender with a span per agent, per model call (GenAI conventions: model and tokens) and per core request; metrics for tokens, latency and proposals; a provisioned Grafana dashboard. Spans carry identifiers, counts and timings only: a test processes every eval tender and checks every attribute, and `make cost-report` fails if any span matches document text. `make observability` starts the collector, Prometheus, Jaeger and Grafana and checks each of them; `make cost-report` turns tokens into cost for priced models only.
@@ -86,7 +86,7 @@ One trace per tender with a span per agent, per model call (GenAI conventions: m
 Everything runs without any key: the agents then use the rule-based reader (keyless baseline) and cost nothing. To use Claude, put **your own** Anthropic API key in your local `.env` (`ANTHROPIC_API_KEY=...`, created at console.anthropic.com). Calls are billed to the account that owns that key. `.env` is git-ignored and never shared; no key is stored in this repository. Results of the author's real-model run are published as recorded answers, so you can replay them for free.
 
 ## Review console
-Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Certificaciones** view values the executed work each month from the approved budget and the weekly progress, with retention and VAT, and a site manager or manager issues it; each issued certification downloads as a PDF. The **Cartera** view shows the bid pipeline by stage with deadline countdowns, and the last move can be undone (with a reason, by whoever made it or by management) until the bid is submitted; schedules and budgets download as MS Project XML or BC3. Each work can use a calendar with the national holidays of Spain and its local holidays, and the schedule end follows it. Every decision is signed by a person (estimating, site manager or management): the core checks who may decide what, keeps amounts over the threshold for management, and makes a second person approve any correction. The browser never holds a key (nginx adds the REVIEWER key, the person travels in an HttpOnly session cookie) and a strict Content-Security-Policy applies.
+Dark, cinematic and fast: rails of proposals waiting for a person, a Gantt with the critical path computed by the core, every rule outcome, every citation with its text, and the audit trail. The **Certificaciones** view values the executed work each month from the approved budget and the weekly progress, with retention and VAT, and a site manager or manager issues it; each issued certification downloads as a PDF. A person in estimating or management uploads a new tender (its PDFs) from **Nueva licitación**; the core stores the files and an agent worker analyses them, so the proposals arrive in the inbox. The **Cartera** view shows the bid pipeline by stage with deadline countdowns, and the last move can be undone (with a reason, by whoever made it or by management) until the bid is submitted; schedules and budgets download as MS Project XML or BC3. Each work can use a calendar with the national holidays of Spain and its local holidays, and the schedule end follows it. Every decision is signed by a person (estimating, site manager or management): the core checks who may decide what, keeps amounts over the threshold for management, and makes a second person approve any correction. The browser never holds a key (nginx adds the REVIEWER key, the person travels in an HttpOnly session cookie) and a strict Content-Security-Policy applies.
 
 ![Inbox of the review console](docs/images/console-inbox.png)
 
@@ -221,6 +221,7 @@ Results with Claude will be published here, labelled with model and date, next t
 | 18 | Monthly certifications of site work | done |
 | 20 | Undo of the last stage move | done |
 | 21 | Certification as a PDF | done |
+| 22 | Tender upload from the console | done |
 
 Session-by-session notes: [PROGRESS.md](PROGRESS.md).
 

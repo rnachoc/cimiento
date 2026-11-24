@@ -30,6 +30,7 @@ Cada persona tiene uno de estos tres roles. El núcleo comprueba siempre el rol,
 | Decidir mediciones, presupuesto, análisis del pliego y borradores de memoria | Sí | No | Sí |
 | Decidir planning, avance de obra, informes y riesgos | No | Sí | Sí |
 | Decidir importes iguales o superiores al umbral (1.000.000 € sin IVA por defecto) | No | No | Sí |
+| Subir licitaciones nuevas | Sí | No | Sí |
 | Mover licitaciones entre etapas | Sí, salvo "Preparando oferta" y "Descartada" | No | Sí |
 | Deshacer el último cambio de etapa | Solo si lo hizo él | No | Sí |
 | Cambiar el calendario laboral de una obra | No | Sí | Sí |
@@ -73,6 +74,18 @@ Cada tarjeta muestra el código, la recomendación de los agentes (ofertar, no o
 - Para marcar una oferta como **presentada** no puede quedar ninguna propuesta por revisar.
 
 **Deshacer un error:** si te equivocas al mover una licitación, pulsa **↩ Volver a ...** en la tarjeta y escribe el motivo. Se puede deshacer el último cambio mientras la licitación está en estudio, en decisión pendiente o preparando oferta. Lo puede deshacer quien hizo el cambio o gerencia. Una oferta **presentada** ya no se puede deshacer: habría que crear una licitación nueva. El deshacer no borra nada: queda como un cambio más en el historial, marcado "(deshecho)".
+
+## 5 bis. Subir una licitación nueva
+
+En **Cartera**, pulsa **+ Nueva licitación**.
+
+1. Escribe el **código** (por ejemplo `LIC-2027-014`; letras, números, punto, guion y guion bajo), el **título** y el **inicio previsto** de la obra, que tiene que ser un lunes.
+2. Adjunta los documentos en PDF: el **pliego** (obligatorio), el **anexo** y las **mediciones**. Cada archivo puede pesar hasta 20 MB.
+3. Pulsa **Subir y analizar**.
+
+La lista **Últimas subidas** muestra el estado: "En cola", "Analizando…", "Lista para revisar" o "Error". Se actualiza sola. Cuando está lista, **Ver ficha →** abre la licitación y **Revisar** lleva a la bandeja, donde esperan sus propuestas: datos con cita, mediciones, presupuesto, planning, riesgos y recomendación.
+
+Los documentos se guardan tal como se subieron y no se pueden modificar. Si el núcleo rechaza la subida (por ejemplo, un código que ya existe), la pantalla dice el motivo. Solo estudios y gerencia pueden subir licitaciones.
 
 ## 6. Ficha de licitación
 
